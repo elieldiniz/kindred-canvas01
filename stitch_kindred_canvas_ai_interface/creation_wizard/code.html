@@ -1,0 +1,353 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Kindred Canvas | Create Your Mug</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<!-- Geist Mono or similar for the mono-sm token -->
+<link href="https://fonts.cdnfonts.com/css/geist" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 300, 'GRAD' 0, 'opsz' 24;
+        }
+        .step-transition {
+            transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        .glass-card {
+            background: rgba(15, 23, 42, 0.6);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        .selection-glow:hover {
+            box-shadow: 0 0 20px rgba(192, 193, 255, 0.2);
+            border-color: rgba(192, 193, 255, 0.4);
+        }
+        .active-selection {
+            border-color: #c0c1ff !important;
+            background: rgba(192, 193, 255, 0.05) !important;
+            box-shadow: 0 0 30px rgba(192, 193, 255, 0.15);
+        }
+    </style>
+<script id="tailwind-config">
+        tailwind.config = {
+          darkMode: "class",
+          theme: {
+            extend: {
+              "colors": {
+                      "primary-fixed-dim": "#c0c1ff",
+                      "surface-variant": "#2a3548",
+                      "on-tertiary-container": "#272a2c",
+                      "surface-container-high": "#1f2a3c",
+                      "on-tertiary-fixed-variant": "#444749",
+                      "on-tertiary-fixed": "#191c1e",
+                      "on-error": "#690005",
+                      "surface-container-highest": "#2a3548",
+                      "surface-container": "#152031",
+                      "on-background": "#d8e3fb",
+                      "on-tertiary": "#2d3133",
+                      "primary-container": "#8083ff",
+                      "on-primary-fixed-variant": "#2f2ebe",
+                      "secondary-fixed-dim": "#bec6e0",
+                      "tertiary": "#c4c7c9",
+                      "inverse-surface": "#d8e3fb",
+                      "surface-dim": "#081425",
+                      "background": "#081425",
+                      "secondary-container": "#3f465c",
+                      "primary": "#c0c1ff",
+                      "on-surface-variant": "#c7c4d7",
+                      "secondary-fixed": "#dae2fd",
+                      "on-secondary-fixed-variant": "#3f465c",
+                      "inverse-primary": "#494bd6",
+                      "on-primary": "#1000a9",
+                      "error-container": "#93000a",
+                      "surface-container-low": "#111c2d",
+                      "on-primary-fixed": "#07006c",
+                      "tertiary-fixed-dim": "#c4c7c9",
+                      "surface-container-lowest": "#040e1f",
+                      "primary-fixed": "#e1e0ff",
+                      "outline-variant": "#464554",
+                      "outline": "#908fa0",
+                      "secondary": "#bec6e0",
+                      "surface-tint": "#c0c1ff",
+                      "on-primary-container": "#0d0096",
+                      "on-error-container": "#ffdad6",
+                      "tertiary-fixed": "#e0e3e5",
+                      "tertiary-container": "#8e9193",
+                      "on-secondary-fixed": "#131b2e",
+                      "on-secondary-container": "#adb4ce",
+                      "surface-bright": "#2f3a4c",
+                      "surface": "#081425",
+                      "on-surface": "#d8e3fb",
+                      "on-secondary": "#283044",
+                      "inverse-on-surface": "#263143",
+                      "error": "#ffb4ab"
+              },
+              "borderRadius": {
+                      "DEFAULT": "0.25rem",
+                      "lg": "0.5rem",
+                      "xl": "0.75rem",
+                      "full": "9999px"
+              },
+              "spacing": {
+                      "stack-sm": "8px",
+                      "stack-lg": "32px",
+                      "container-max": "1440px",
+                      "gutter": "24px",
+                      "sidebar-width": "260px",
+                      "section-gap": "64px",
+                      "margin-page": "40px",
+                      "stack-md": "16px"
+              },
+              "fontFamily": {
+                      "headline-lg-mobile": ["Inter"],
+                      "headline-lg": ["Inter"],
+                      "body-lg": ["Inter"],
+                      "headline-md": ["Inter"],
+                      "display-lg": ["Inter"],
+                      "body-md": ["Inter"],
+                      "mono-sm": ["Geist"],
+                      "label-md": ["Geist"]
+              },
+              "fontSize": {
+                      "headline-lg-mobile": ["28px", {"lineHeight": "36px", "fontWeight": "600"}],
+                      "headline-lg": ["32px", {"lineHeight": "40px", "letterSpacing": "-0.02em", "fontWeight": "600"}],
+                      "body-lg": ["18px", {"lineHeight": "28px", "fontWeight": "400"}],
+                      "headline-md": ["24px", {"lineHeight": "32px", "letterSpacing": "-0.01em", "fontWeight": "600"}],
+                      "display-lg": ["48px", {"lineHeight": "56px", "letterSpacing": "-0.04em", "fontWeight": "700"}],
+                      "body-md": ["16px", {"lineHeight": "24px", "fontWeight": "400"}],
+                      "mono-sm": ["12px", {"lineHeight": "16px", "fontWeight": "400"}],
+                      "label-md": ["14px", {"lineHeight": "20px", "letterSpacing": "0.02em", "fontWeight": "500"}]
+              }
+            },
+          },
+        }
+      </script>
+</head>
+<body class="bg-background text-on-surface min-h-screen flex flex-col font-body-md overflow-hidden">
+<!-- Subtle Background Shader -->
+
+<!-- Top Navigation Placeholder (Shell suppressed per rules for Transactional/Wizard focus) -->
+<header class="relative z-10 flex items-center justify-between px-gutter py-stack-md w-full">
+<div class="flex items-center gap-stack-sm">
+<div class="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
+<span class="material-symbols-outlined text-on-primary text-[20px]" style="font-variation-settings: 'FILL' 1;">palette</span>
+</div>
+<span class="font-headline-md text-headline-md font-bold text-on-surface">Kindred Canvas</span>
+</div>
+<button class="text-on-surface-variant hover:text-on-surface font-label-md text-label-md flex items-center gap-1 transition-colors">
+<span class="material-symbols-outlined text-[18px]">close</span>
+            Exit
+        </button>
+</header>
+<!-- Main Wizard Canvas -->
+<main class="relative z-10 flex-1 flex flex-col items-center justify-center px-gutter py-stack-lg max-w-container-max mx-auto w-full">
+<!-- Progress Indicator -->
+<div class="w-full max-w-2xl mb-section-gap">
+<div class="flex justify-between items-center mb-stack-sm">
+<span class="font-mono-sm text-mono-sm text-primary uppercase tracking-widest">Step 01 of 04</span>
+<span class="font-mono-sm text-mono-sm text-on-surface-variant">Identity &amp; Essence</span>
+</div>
+<div class="h-[2px] w-full bg-surface-container-highest rounded-full overflow-hidden">
+<div class="h-full bg-primary shadow-[0_0_10px_rgba(192,193,255,0.6)]" style="width: 25%"></div>
+</div>
+</div>
+<!-- Section 1: Category Selection -->
+<div class="step-transition w-full flex flex-col items-center" id="step-category">
+<div class="text-center mb-stack-lg">
+<h1 class="font-display-lg text-display-lg text-on-surface mb-stack-sm">Who is the star of this canvas?</h1>
+<p class="font-body-lg text-body-lg text-on-surface-variant max-w-xl mx-auto">Select the primary subject for your custom AI-generated mug design.</p>
+</div>
+<div class="grid grid-cols-1 md:grid-cols-3 gap-gutter w-full max-w-5xl">
+<!-- Pets -->
+<button class="glass-card selection-glow rounded-xl p-stack-lg text-left group transition-all" onclick="selectCategory(this)">
+<div class="mb-stack-md flex justify-between items-start">
+<div class="w-12 h-12 rounded-lg bg-surface-container-high flex items-center justify-center text-primary group-hover:scale-110 transition-transform">
+<span class="material-symbols-outlined text-[32px]">pets</span>
+</div>
+<span class="material-symbols-outlined opacity-0 group-[.active-selection]:opacity-100 text-primary">check_circle</span>
+</div>
+<h3 class="font-headline-md text-headline-md mb-stack-sm">Pets</h3>
+<p class="font-label-md text-label-md text-on-surface-variant leading-relaxed">Paws, whiskers, and wings. Capture the unique spirit of your loyal companion.</p>
+</button>
+<!-- Family -->
+<button class="glass-card selection-glow rounded-xl p-stack-lg text-left group transition-all" onclick="selectCategory(this)">
+<div class="mb-stack-md flex justify-between items-start">
+<div class="w-12 h-12 rounded-lg bg-surface-container-high flex items-center justify-center text-primary group-hover:scale-110 transition-transform">
+<span class="material-symbols-outlined text-[32px]">family_restroom</span>
+</div>
+<span class="material-symbols-outlined opacity-0 group-[.active-selection]:opacity-100 text-primary">check_circle</span>
+</div>
+<h3 class="font-headline-md text-headline-md mb-stack-sm">Family</h3>
+<p class="font-label-md text-label-md text-on-surface-variant leading-relaxed">Cherish the bond. From toddlers to grandparents, immortalized in art.</p>
+</button>
+<!-- Couple -->
+<button class="glass-card selection-glow rounded-xl p-stack-lg text-left group transition-all" onclick="selectCategory(this)">
+<div class="mb-stack-md flex justify-between items-start">
+<div class="w-12 h-12 rounded-lg bg-surface-container-high flex items-center justify-center text-primary group-hover:scale-110 transition-transform">
+<span class="material-symbols-outlined text-[32px]">favorite</span>
+</div>
+<span class="material-symbols-outlined opacity-0 group-[.active-selection]:opacity-100 text-primary">check_circle</span>
+</div>
+<h3 class="font-headline-md text-headline-md mb-stack-sm">Couple</h3>
+<p class="font-label-md text-label-md text-on-surface-variant leading-relaxed">Celebrating your story. Perfect for anniversaries or everyday love.</p>
+</button>
+</div>
+</div>
+<!-- Section 2: Style Selection (Hidden initially for logical wizard flow simulation) -->
+<div class="hidden step-transition w-full flex flex-col items-center" id="step-style">
+<div class="text-center mb-stack-lg">
+<h1 class="font-display-lg text-display-lg text-on-surface mb-stack-sm">Define the Aesthetic</h1>
+<p class="font-body-lg text-body-lg text-on-surface-variant max-w-xl mx-auto">Choose a visual language that matches your personality.</p>
+</div>
+<div class="grid grid-cols-2 lg:grid-cols-4 gap-stack-md w-full max-w-6xl">
+<!-- Watercolor -->
+<div class="group cursor-pointer" onclick="selectStyle(this)">
+<div class="aspect-square relative rounded-xl overflow-hidden border border-outline-variant selection-glow transition-all group-[.active-selection]:active-selection">
+<img class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700" data-alt="A dreamy watercolor painting style with soft, bleeding edges and delicate pastel washes of indigo and rose. The texture of cold-press paper is visible. Atmospheric and serene professional digital art in a neo-minimalist dark mode setting." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBPbqtAVHa8T6IvBVRgqSNwLsvMiM0EnZqtLrTbws5qW-Wr24tE2LX5AMdU0nZLIVtqOH8KjYeZ1mOZkKY-038PNcHHr9vwY5Jddr7nZF1yb0cj2nOAMDfIegm2tmwA2g6msND9Bt4RoSavMZ37Te1JefwfUH4x5KFCFfcGzu3M2NrsZQZayzDBAsh4R5iMeVKwG00Q0FYW83o_oMqZ1iC_-ahT-LM-D9RXf9kQH-Nf7AfnXacypXXaDg"/>
+<div class="absolute inset-0 bg-gradient-to-t from-background/80 to-transparent opacity-60"></div>
+<div class="absolute bottom-3 left-3 flex items-center gap-2">
+<span class="material-symbols-outlined text-primary text-[18px]" style="font-variation-settings: 'FILL' 1;">brush</span>
+<span class="font-label-md text-label-md font-bold">Watercolor</span>
+</div>
+</div>
+</div>
+<!-- Pixar -->
+<div class="group cursor-pointer" onclick="selectStyle(this)">
+<div class="aspect-square relative rounded-xl overflow-hidden border border-outline-variant selection-glow transition-all group-[.active-selection]:active-selection">
+<img class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700" data-alt="A 3D animated character style reminiscent of high-end Pixar films. Bright, expressive lighting with smooth surfaces and vibrant saturated colors. Subsurface scattering on skin and soft global illumination. Professional cinematic render with rich detail and professional depth of field." src="https://lh3.googleusercontent.com/aida-public/AB6AXuAT95dUIvK0OKQjOYop8i9AbjqVzH3mQp2kuA4jJimnagy3a-YL6hN0_cs8ZZdzc0l8aALFjvDGRgGZg6lTpd6B5KCB3Hw-5hr35ryrlOCPsOQhHp5un84PHmB2zWolSB8HZX5EZRxMmuW0_-FObdoSMUQEQzj4WH2vD7OoG58JadYxGz_E8GnQHiV1IqgwF8Ky4ideNHya0248YgGnM_6fNOjPAjHmQ5UXZ0FNwTFbZUXx0I93yM34yA"/>
+<div class="absolute inset-0 bg-gradient-to-t from-background/80 to-transparent opacity-60"></div>
+<div class="absolute bottom-3 left-3 flex items-center gap-2">
+<span class="material-symbols-outlined text-primary text-[18px]" style="font-variation-settings: 'FILL' 1;">movie_filter</span>
+<span class="font-label-md text-label-md font-bold">Pixar</span>
+</div>
+</div>
+</div>
+<!-- Realistic -->
+<div class="group cursor-pointer" onclick="selectStyle(this)">
+<div class="aspect-square relative rounded-xl overflow-hidden border border-outline-variant selection-glow transition-all group-[.active-selection]:active-selection">
+<img class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700" data-alt="Hyper-realistic photography style with high dynamic range and sharp focus. Dramatic studio lighting with deep shadows and brilliant highlights on a dark, sophisticated backdrop. Every texture is visible from fabric weave to fine hairs. 8k resolution, professional commercial photography aesthetic." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBZ4p5tnZ7f_u8OKeH0gNFIofK0YUWz5URAiKoq8E5ogYuRPz117FiOxIE8LYSH5Bxur7JBnIYVDXYrcF_2Vkpfc5Lq5MnhuRDWXfu0X31I-1fBwaH7XGzZUmh0EXv5zoi7GX782C4M8hhyZp5PzNEnIqU3rObR-7ry9uBbikAvj7yVXAg5jMlGmRrHpI45YdOFQDNfIuqsDLLUoSmC9TUsiX0Hljouowrty3A1KkR_OcMz__owN-xlgQ"/>
+<div class="absolute inset-0 bg-gradient-to-t from-background/80 to-transparent opacity-60"></div>
+<div class="absolute bottom-3 left-3 flex items-center gap-2">
+<span class="material-symbols-outlined text-primary text-[18px]" style="font-variation-settings: 'FILL' 1;">photo_camera</span>
+<span class="font-label-md text-label-md font-bold">Realistic</span>
+</div>
+</div>
+</div>
+<!-- Cyberpunk -->
+<div class="group cursor-pointer" onclick="selectStyle(this)">
+<div class="aspect-square relative rounded-xl overflow-hidden border border-outline-variant selection-glow transition-all group-[.active-selection]:active-selection">
+<img class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700" data-alt="Cyberpunk digital art style featuring vibrant neon glows in electric blue and magenta. High contrast lighting in a dark urban environment with rain-slicked surfaces and glitch art elements. Intricate mechanical details and glowing circuit patterns. Modern, edgy, and high-tech professional digital illustration." src="https://lh3.googleusercontent.com/aida-public/AB6AXuAfYvZ2qey7ZxdkTX__NQ1ydg4ziihb-WpLRtXLavLfzFShOMY8MT2bxhfy21sbgZX0h2kmulVblyRKVCJZlUoTyp5MGZ0LDFlHOGp1KW6gVxr3U_5TGQ2Fs7Gv9fAfqNG-KuCXxWiMJkcABcqDFmgJoF2DHSJS_8x21tu-d0N33uYqbf5N5P06YJ5nleV76OkxjTARF01xicCVrJGOukxO0Ma7v_-0x4o4TcIeoj0QWsm4YfRGSdsaMQ"/>
+<div class="absolute inset-0 bg-gradient-to-t from-background/80 to-transparent opacity-60"></div>
+<div class="absolute bottom-3 left-3 flex items-center gap-2">
+<span class="material-symbols-outlined text-primary text-[18px]" style="font-variation-settings: 'FILL' 1;">bolt</span>
+<span class="font-label-md text-label-md font-bold">Cyberpunk</span>
+</div>
+</div>
+</div>
+</div>
+</div>
+</main>
+<!-- Navigation Footer -->
+<footer class="relative z-10 border-t border-outline-variant bg-surface-container/30 backdrop-blur-sm px-gutter py-stack-md">
+<div class="max-w-container-max mx-auto flex justify-between items-center">
+<button class="flex items-center gap-2 px-stack-md py-2 text-on-surface-variant hover:text-on-surface transition-all opacity-50 cursor-not-allowed" id="btn-back" onclick="navigateBack()">
+<span class="material-symbols-outlined">arrow_back</span>
+<span class="font-label-md text-label-md">Back</span>
+</button>
+<div class="hidden md:flex flex-col items-center">
+<p class="font-mono-sm text-mono-sm text-on-surface-variant uppercase tracking-tighter">Current Selection</p>
+<p class="font-label-md text-label-md text-primary" id="selection-summary">None selected</p>
+</div>
+<button class="bg-primary text-on-primary px-stack-lg py-3 rounded-full font-label-md text-label-md font-bold flex items-center gap-2 hover:scale-105 hover:shadow-[0_0_20px_rgba(192,193,255,0.4)] transition-all" id="btn-next" onclick="navigateNext()">
+<span>Continue</span>
+<span class="material-symbols-outlined">arrow_forward</span>
+</button>
+</div>
+</footer>
+<script>
+        let currentStep = 1;
+        let selectedCategory = null;
+        let selectedStyle = null;
+
+        function selectCategory(element) {
+            // Remove active state from all siblings
+            document.querySelectorAll('#step-category button').forEach(btn => {
+                btn.classList.remove('active-selection');
+            });
+            // Add active state
+            element.classList.add('active-selection');
+            selectedCategory = element.querySelector('h3').innerText;
+            updateSummary();
+            enableNext();
+        }
+
+        function selectStyle(element) {
+            document.querySelectorAll('#step-style .group').forEach(btn => {
+                btn.classList.remove('active-selection');
+            });
+            element.classList.add('active-selection');
+            selectedStyle = element.querySelector('span:last-child').innerText;
+            updateSummary();
+            enableNext();
+        }
+
+        function updateSummary() {
+            const summary = document.getElementById('selection-summary');
+            if (selectedCategory && selectedStyle) {
+                summary.innerText = `${selectedCategory} • ${selectedStyle}`;
+            } else if (selectedCategory) {
+                summary.innerText = selectedCategory;
+            } else {
+                summary.innerText = 'None selected';
+            }
+        }
+
+        function enableNext() {
+            const btn = document.getElementById('btn-next');
+            btn.classList.remove('opacity-50', 'pointer-events-none');
+        }
+
+        function navigateNext() {
+            if (currentStep === 1 && selectedCategory) {
+                currentStep = 2;
+                document.getElementById('step-category').classList.add('hidden');
+                document.getElementById('step-style').classList.remove('hidden');
+                
+                // Update Progress UI
+                document.querySelector('.h-full.bg-primary').style.width = '50%';
+                document.querySelector('.uppercase.tracking-widest').innerText = 'Step 02 of 04';
+                
+                // Update Back Button
+                const backBtn = document.getElementById('btn-back');
+                backBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+                
+                // If style not selected, disable next
+                if (!selectedStyle) {
+                    const nextBtn = document.getElementById('btn-next');
+                    // nextBtn.classList.add('opacity-50'); // Keep it visible for "Continue" feel but requires interaction
+                }
+            } else if (currentStep === 2 && selectedStyle) {
+                // Logic for final confirmation or prompt building
+                alert(`Wizard complete! Generation started for ${selectedCategory} in ${selectedStyle} style.`);
+            }
+        }
+
+        function navigateBack() {
+            if (currentStep === 2) {
+                currentStep = 1;
+                document.getElementById('step-style').classList.add('hidden');
+                document.getElementById('step-category').classList.remove('hidden');
+                
+                document.querySelector('.h-full.bg-primary').style.width = '25%';
+                document.querySelector('.uppercase.tracking-widest').innerText = 'Step 01 of 04';
+
+                const backBtn = document.getElementById('btn-back');
+                backBtn.classList.add('opacity-50', 'cursor-not-allowed');
+            }
+        }
+    </script>
+</body></html>
