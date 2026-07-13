@@ -6,6 +6,7 @@ use Database\Factories\ProjectFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Project extends Model
@@ -103,6 +104,14 @@ class Project extends Model
     public function sourceImage(): BelongsTo
     {
         return $this->belongsTo(SourceImage::class);
+    }
+
+    /**
+     * @return HasMany<Generation, $this>
+     */
+    public function generations(): HasMany
+    {
+        return $this->hasMany(Generation::class);
     }
 
     public function isModeLocked(): bool

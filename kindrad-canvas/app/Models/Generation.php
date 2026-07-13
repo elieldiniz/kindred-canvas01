@@ -148,6 +148,33 @@ class Generation extends Model
      * @param  Builder<$this>  $query
      * @return Builder<$this>
      */
+    public function scopeCompleted(Builder $query): Builder
+    {
+        return $query->whereHas('status', fn (Builder $statusQuery) => $statusQuery->where('slug', 'completed'));
+    }
+
+    /**
+     * @param  Builder<$this>  $query
+     * @return Builder<$this>
+     */
+    public function scopeFailed(Builder $query): Builder
+    {
+        return $query->whereHas('status', fn (Builder $statusQuery) => $statusQuery->where('slug', 'failed'));
+    }
+
+    /**
+     * @param  Builder<$this>  $query
+     * @return Builder<$this>
+     */
+    public function scopeProcessing(Builder $query): Builder
+    {
+        return $query->whereHas('status', fn (Builder $statusQuery) => $statusQuery->where('slug', 'processing'));
+    }
+
+    /**
+     * @param  Builder<$this>  $query
+     * @return Builder<$this>
+     */
     public function scopeForUser(Builder $query, int $userId): Builder
     {
         return $query->where('user_id', $userId);
