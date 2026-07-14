@@ -14,18 +14,36 @@ Kindred Canvas work left off. Keep it updated.
   - `a764485` — `feat(projects): add project show surface, generation download,
     soft delete + 30-day purge` (7.5-light + 8.x delta).
 - Worktree: `/home/eliel/workspace/projects/kindred-canvas/kindrad-canvas/`
-- Spec refs live in `kindrad-canvas/.spec/` (project-wizard slice) and the
-  outer `.spec/` (overall project phases).
+- Spec refs live at the workspace root `.spec/` (NOT inside `kindrad-canvas/`):
+  - `.spec/features/project-wizard/` — wizard slice
+  - `.spec/features/project-wizard-resume/` — STATUS.md snapshot of where the wizard stopped
+  - `.spec/init/` — overall project phases, design tokens, user stories, schema
 
 ## Test + lint snapshot (last verified `a764485`)
 
 ```
 vendor/bin/pint --dirty --format agent   →  passed
-php artisan test --compact               →  194 tests, 193 passed, 1 skipped
+php artisan test --compact               →  229 tests, 228 passed, 1 skipped
 ```
 
 The single skipped test is `WizardPerformanceTest::picker_render_time_best_effort_*`
 which is `->skip(env('CI'))` — a known CI-only flake on the perf-timing assertion.
+
+## Real implementation status (drift-corrected 2026-07-14)
+
+`.spec/init/project-phases.md` was previously marked `[x]` for many tasks that
+were NOT implemented. Audit corrected: Phase 3.2 (Google OAuth) is missing,
+Phase 4.1 has no credit_balance widget, Phase 4.2 (credits history) is missing,
+Phase 5.1-5.8 (admin back-office) are mostly missing, Phase 7.4 (Reverb
+broadcasting) was skipped per vertical-slice decision, Phase 7.5 is partial
+(polling only, no Echo).
+
+**Actually implemented:** Phase 1.1-1.6, 2.1-2.5, 3.1, 3.2, 3.3, 4.1, 4.2, 5.1, 6.1-6.4,
+7.1-7.3, 8.1-8.3. **Partial:** 3.3, 7.5. **Missing:** 5.2-5.8, 7.4.
+
+**Top-of-mind next steps** (from previous session): implement Phase 7.4
+broadcasting, Phase 5 admin CRUD, Phase 3.2 OAuth, Phase 4.1/4.2 dashboard
+widgets / credits history, or move on to Phase 9 deferred work.
 
 ## Where things live
 
@@ -44,8 +62,10 @@ which is `->skip(env('CI'))` — a known CI-only flake on the perf-timing assert
 | Download endpoint | `app/Http/Controllers/Generations/DownloadController.php` |
 | Soft-delete command | `app/Console/Commands/Projects/PurgeDeletedProjects.php` |
 | Policies | `app/Policies/{ProjectPolicy,GenerationPolicy}.php` |
+| Admin middleware | `app/Http/Middleware/EnsureAdmin.php` (registered as `admin` alias in `bootstrap/app.php`) |
 | Migrations | `database/migrations/2026_07_13_*` |
 | Catalog seeder | `database/seeders/CatalogSeeder.php` |
+| Signup grant | `app/Actions/Fortify/CreateNewUser.php` + `Registered` event → `CreditLedger::signupGrant` |
 | README | `README.md` at workspace root |
 
 ## Default workdir for the next agent
@@ -73,11 +93,15 @@ Always `workdir: kindrad-canvas/` (or pass it explicitly when calling shells).
 
 ## Where the open spec lives when work resumes
 
-- `kindrad-canvas/.spec/features/project-wizard/PHASES.md` (wizard slice,
-  already executed — read for context but don't re-run).
-- `.spec/init/project-phases.md` (overall plan). Phases complete: 1.0
-  (Foundation) + 6 (Wizard 1-8) + 7.0/7.1/7.2/7.3/7.5-light + 8.1/8.2/8.3.
-  Phase 7.4 (Reverb broadcasting) was skipped per vertical-slice decision.
+- `.spec/features/project-wizard/PHASES.md` (wizard slice, all 33 tasks `[x]`
+  as of `a764485` — read for context but don't re-run).
+- `.spec/features/project-wizard-resume/STATUS.md` (detailed status of the
+  wizard slice including 14 follow-up tasks NEW-A..N).
+- `.spec/init/project-phases.md` (overall plan). Phases complete: 1.1-1.6,
+  2.1-2.5, 3.1, 3.3 (partial), 6.1-6.4, 7.1-7.3, 8.1-8.3. Phase 7.4 (Reverb
+  broadcasting) was skipped per vertical-slice decision; Phase 5 (admin
+  back-office), Phase 3.2 (Google OAuth), Phase 4.1/4.2 (dashboard widgets
+  + credits history), Phase 7.5 (Echo subscription) are pending.
 
 ## What the user cares about next
 

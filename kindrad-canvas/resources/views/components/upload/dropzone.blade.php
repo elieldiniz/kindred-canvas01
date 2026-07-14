@@ -54,7 +54,7 @@
         wire:keydown.enter.prevent
         data-test="wizard-source-dropzone"
         data-has-preview="0"
-        class="group relative mx-auto flex w-full max-w-xl cursor-pointer flex-col items-center justify-center gap-stack-md rounded-2xl border-2 border-dashed border-primary/20 bg-primary/5 p-stack-lg text-center transition-colors focus:border-primary focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 hover:fill-primary/10"
+        class="group relative mx-auto flex w-full max-w-xl cursor-pointer flex-col items-center justify-center gap-stack-md rounded-2xl border-2 border-dashed border-primary/20 bg-primary/5 p-stack-lg text-center transition-colors focus:border-primary focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 hover:bg-primary/10"
     >
         <input
             type="file"

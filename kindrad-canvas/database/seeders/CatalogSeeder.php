@@ -11,6 +11,8 @@ use App\Models\GenerationProvider;
 use App\Models\GenerationStatus;
 use App\Models\Layout;
 use App\Models\LayoutStatus;
+use App\Models\Pose;
+use App\Models\PoseStatus;
 use App\Models\Product;
 use App\Models\ProductStatus;
 use App\Models\ProjectMode;
@@ -122,36 +124,36 @@ class CatalogSeeder extends Seeder
     ];
 
     /**
-     * @var array<string, array{name: string, description: string, prompt_fragment: string, thumbnail_path: string|null}>
+     * @var array<string, array{name: string, prompt_fragment: string, thumbnail_path: string|null, description: string}>
      */
     private array $styles = [
         'watercolor' => [
             'name' => 'Watercolor',
-            'prompt_fragment' => 'rendered in soft watercolor with gentle washes and visible brushstrokes',
+            'prompt_fragment' => 'rendered in soft watercolor with gentle washes and visible brushstrokes, warm color palette',
             'thumbnail_path' => null,
             'description' => 'Soft washes and brushstrokes for a hand-painted feel.',
         ],
         'cartoon' => [
             'name' => 'Cartoon',
-            'prompt_fragment' => 'rendered as a flat colorful cartoon with bold outlines',
+            'prompt_fragment' => 'modern cartoon illustration, vibrant colors, soft shading, bold outlines, flat colorful style',
             'thumbnail_path' => null,
             'description' => 'Bold outlines and flat colors.',
         ],
         'realistic' => [
             'name' => 'Realistic',
-            'prompt_fragment' => 'rendered photographically with realistic lighting and texture',
+            'prompt_fragment' => 'highly detailed semi-realistic digital portrait, realistic lighting and texture, photographic quality',
             'thumbnail_path' => null,
             'description' => 'Photo-realistic detail and lighting.',
         ],
         'pixel_art' => [
             'name' => 'Pixel Art',
-            'prompt_fragment' => 'rendered as 16-bit pixel art with a limited palette',
+            'prompt_fragment' => 'rendered as 16-bit pixel art with a limited palette, retro gaming aesthetic',
             'thumbnail_path' => null,
             'description' => 'Retro 16-bit pixel style.',
         ],
         'minimalist_line' => [
             'name' => 'Minimalist Line',
-            'prompt_fragment' => 'rendered as minimalist single-line art on a clean background',
+            'prompt_fragment' => 'rendered as minimalist single-line art on a clean background, elegant simplicity',
             'thumbnail_path' => null,
             'description' => 'Single-line minimalist drawings.',
         ],
@@ -195,17 +197,55 @@ class CatalogSeeder extends Seeder
         'kids',
     ];
 
+    /**
+     * @var array<string, array{name: string, print_width_mm: float, print_height_mm: float, min_dpi: int, safe_area_mm: float, color_mode: string}>
+     */
+    private array $products = [
+        'mug' => [
+            'name' => 'Mug',
+            'print_width_mm' => 220.00,
+            'print_height_mm' => 95.00,
+            'min_dpi' => 300,
+            'safe_area_mm' => 5.00,
+            'color_mode' => 'rgb',
+        ],
+        'free_art' => [
+            'name' => 'Free Art',
+            'print_width_mm' => 210.00,
+            'print_height_mm' => 297.00,
+            'min_dpi' => 300,
+            'safe_area_mm' => 5.00,
+            'color_mode' => 'cmyk',
+        ],
+    ];
+
+    /**
+     * @var array<string, array{name: string, sort_order: int}>
+     */
+    private array $poses = [
+        'abracados' => ['name' => 'Abraçados', 'sort_order' => 0],
+        'beijo' => ['name' => 'Beijo', 'sort_order' => 1],
+        'sentados' => ['name' => 'Sentados', 'sort_order' => 2],
+        'caminhando' => ['name' => 'Caminhando', 'sort_order' => 3],
+        'natal' => ['name' => 'Natal', 'sort_order' => 4],
+        'praia' => ['name' => 'Praia', 'sort_order' => 5],
+        'sofa' => ['name' => 'Sofá', 'sort_order' => 6],
+        'flores' => ['name' => 'Flores', 'sort_order' => 7],
+    ];
+
     public function run(): void
     {
         $this->seedLookups();
         $this->seedGenerationLookups();
-        $product = $this->seedProducts();
+        $products = $this->seedProducts();
         $styles = $this->seedStyles();
         $layouts = $this->seedLayouts();
-        $this->seedCategories($product);
+        $this->seedCategories($products['mug']);
+        $this->seedCategories($products['free_art']);
         $this->seedCategoryStyles($styles);
         $this->seedStyleLayouts($styles, $layouts);
-        $this->seedPromptTemplates($product);
+        $this->seedPoses();
+        $this->seedPromptTemplates($products);
     }
 
     private function seedGenerationLookups(): void
@@ -268,20 +308,48 @@ class CatalogSeeder extends Seeder
         }
     }
 
-    private function seedProducts(): Product
+    /**
+     * @return array<string, Product>
+     */
+    private function seedProducts(): array
     {
         $active = ProductStatus::where('slug', 'active')->firstOrFail();
-        $rgb = ColorMode::where('slug', 'rgb')->firstOrFail();
+        $models = [];
 
-        return Product::firstOrCreate(['slug' => 'mug'], [
-            'name' => 'Mug',
-            'status_id' => $active->id,
-            'print_width_mm' => 220.00,
-            'print_height_mm' => 95.00,
-            'min_dpi' => 300,
-            'safe_area_mm' => 5.00,
-            'color_mode_id' => $rgb->id,
-        ]);
+        foreach ($this->products as $slug => $row) {
+            $colorMode = ColorMode::where('slug', $row['color_mode'])->firstOrFail();
+            $models[$slug] = Product::firstOrCreate(['slug' => $slug], [
+                'name' => $row['name'],
+                'status_id' => $active->id,
+                'print_width_mm' => $row['print_width_mm'],
+                'print_height_mm' => $row['print_height_mm'],
+                'min_dpi' => $row['min_dpi'],
+                'safe_area_mm' => $row['safe_area_mm'],
+                'color_mode_id' => $colorMode->id,
+            ]);
+        }
+
+        return $models;
+    }
+
+    /**
+     * @return array<string, Pose>
+     */
+    private function seedPoses(): array
+    {
+        $active = PoseStatus::where('slug', 'active')->firstOrFail();
+        $models = [];
+
+        foreach ($this->poses as $slug => $row) {
+            $models[$slug] = Pose::firstOrCreate(['slug' => $slug], [
+                'name' => $row['name'],
+                'thumbnail_path' => null,
+                'status_id' => $active->id,
+                'sort_order' => $row['sort_order'],
+            ]);
+        }
+
+        return $models;
     }
 
     /**
@@ -348,7 +416,7 @@ class CatalogSeeder extends Seeder
      */
     private function seedCategoryStyles(array $styles): void
     {
-        $categories = Category::whereHas('product', fn ($q) => $q->where('slug', 'mug'))->get();
+        $categories = Category::all();
 
         foreach ($categories as $category) {
             foreach (array_keys($this->styles) as $styleSlug) {
@@ -375,26 +443,43 @@ class CatalogSeeder extends Seeder
         }
     }
 
-    private function seedPromptTemplates(Product $product): void
+    /**
+     * @param  array<string, Product>  $products
+     */
+    private function seedPromptTemplates(array $products): void
     {
-        $body = 'A personalized design for {{name}}. {{phrase}} {{theme}} {{image_tags}} {{print_specs}} {{dedicatoria}}';
+        $body = 'Create a {{subject_type}} portrait in the {{pose}} pose for {{name}}.
 
-        $categories = Category::where('product_id', $product->id)->get();
+{{phrase}} {{theme}} {{dedicatoria}} {{custom_prompt}}
+
+Style: {{style_description}}.
+
+{{layout_instructions}}
+
+{{print_specs}}
+
+Preserve the subject identity and key features. Maintain strong composition and high visual quality.';
+
+        $categories = Category::whereIn('product_id', collect($products)->pluck('id'))->get();
         $styles = Style::all();
         $layouts = Layout::all();
 
-        foreach ($categories as $category) {
-            foreach ($styles as $style) {
-                foreach ($layouts as $layout) {
-                    PromptTemplate::firstOrCreate([
-                        'product_id' => $product->id,
-                        'category_id' => $category->id,
-                        'style_id' => $style->id,
-                        'layout_id' => $layout->id,
-                    ], [
-                        'body' => $body,
-                        'version' => 1,
-                    ]);
+        foreach ($products as $product) {
+            $productCategories = $categories->where('product_id', $product->id);
+
+            foreach ($productCategories as $category) {
+                foreach ($styles as $style) {
+                    foreach ($layouts as $layout) {
+                        PromptTemplate::firstOrCreate([
+                            'product_id' => $product->id,
+                            'category_id' => $category->id,
+                            'style_id' => $style->id,
+                            'layout_id' => $layout->id,
+                        ], [
+                            'body' => $body,
+                            'version' => 1,
+                        ]);
+                    }
                 }
             }
         }

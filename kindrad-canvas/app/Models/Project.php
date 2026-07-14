@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Project extends Model
@@ -28,6 +29,9 @@ class Project extends Model
         'title',
         'inputs',
         'source_image_id',
+        'subject_type',
+        'custom_prompt',
+        'pose_id',
         'first_generated_at',
     ];
 
@@ -40,6 +44,32 @@ class Project extends Model
             'inputs' => 'array',
             'first_generated_at' => 'datetime',
         ];
+    }
+
+    public const SUBJECT_TYPES = [
+        'pessoa',
+        'casal',
+        'familia',
+        'pet',
+        'outra',
+    ];
+
+    public const PHOTO_COUNTS = [
+        'pessoa' => 1,
+        'pet' => 1,
+        'outra' => 1,
+        'casal' => 2,
+        'familia' => 2,
+    ];
+
+    public function needsPose(): bool
+    {
+        return in_array($this->subject_type, ['casal', 'familia'], true);
+    }
+
+    public function expectedPhotoCount(): int
+    {
+        return self::PHOTO_COUNTS[$this->subject_type] ?? 0;
     }
 
     /**
@@ -107,11 +137,35 @@ class Project extends Model
     }
 
     /**
+     * @return BelongsTo<Pose, $this>
+     */
+    public function pose(): BelongsTo
+    {
+        return $this->belongsTo(Pose::class);
+    }
+
+    /**
+     * @return HasMany<ProjectPhoto, $this>
+     */
+    public function photos(): HasMany
+    {
+        return $this->hasMany(ProjectPhoto::class)->ordered();
+    }
+
+    /**
      * @return HasMany<Generation, $this>
      */
     public function generations(): HasMany
     {
         return $this->hasMany(Generation::class);
+    }
+
+    /**
+     * @return HasOne<Generation, $this>
+     */
+    public function latestGeneration(): HasOne
+    {
+        return $this->hasOne(Generation::class)->latestOfMany('id');
     }
 
     public function isModeLocked(): bool

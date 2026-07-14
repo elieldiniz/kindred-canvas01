@@ -20,6 +20,7 @@ return new class extends Migration
             $table->timestamps();
 
             $table->unique(['product_id', 'slug'], 'categories_product_slug_unique');
+            $table->index(['product_id', 'status_id', 'sort_order'], 'categories_picker_idx');
             $table->index('status_id', 'categories_status_idx');
         });
     }

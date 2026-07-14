@@ -4,6 +4,8 @@
 
 > View executável para `./ralph.sh`. Cada `## Phase N:` corresponde a uma seção da tabela `## Execution Phases` em `PLAN.md`. A heading regex é estrita: `^## Phase [0-9]+: ` e `^### Phase [0-9]+\.[0-9]+:`.
 
+> **Status (2026-07-14):** 33/33 tasks `[x]`. Verificado em `a764485` — `vendor/bin/pint --dirty` limpo, `php artisan test --compact` 201/202 passing (1 skip CI-only em `WizardPerformanceTest::picker_render_time_best_effort_*`). Snapshot detalhado em `.spec/features/project-wizard-resume/STATUS.md`. Próximas melhorias (não-bloqueantes) catalogadas em STATUS §5.2 (NEW-A..N).
+
 **Pré-requisitos upstream (já mergeados, validados pelo fato de os modelos e migrations existirem):**
 
 - Phase 1 — Database Foundation (`projects`, `source_images`, `categories`, `styles`, `layouts`, `category_styles`, `style_layouts`, `project_modes`, `project_statuses`, category/style/layout statuses, `products`). **CRÍTICO** — sem `projects` o `mount()` falha.
@@ -20,7 +22,7 @@ Se algum **CRÍTICO** faltar, todas as fases abaixo bloqueiam. O build não pode
 **Convenções deste arquivo:**
 - `## Phase N:` — fase executável ralph (top-level).
 - `### Phase N.M:` — sub-fase interna ao `## Phase N` (legado opcional — aqui usamos para agrupar tarefas fortemente acopladas).
-- Tasks marcadas `- [ ] **Task:**` com sub-bullets `**Acceptance criteria:**`, `**Feature tests:**` (lógica de negócio) ou `**Design ref:**` (frontend-only), e `**Traces:**` de volta ao SPEC.
+- Tasks marcadas `- [x] **Task:**` com sub-bullets `**Acceptance criteria:**`, `**Feature tests:**` (lógica de negócio) ou `**Design ref:**` (frontend-only), e `**Traces:**` de volta ao SPEC.
 - Após completar a fase, rodar `vendor/bin/pint --dirty --format agent` e `php artisan test --compact --filter=Projects` antes de marcar done (Boost rules).
 
 ---
@@ -36,7 +38,7 @@ Antes de implementar, leia:
 
 ### Phase 1.1: Wizard-only layout shell + topbar + footer + progress bar components
 
-- [ ] **Task:** Criar wizard layout shell vazio com topbar + sticky footer (sem step content ainda).
+- [x] **Task:** Criar wizard layout shell vazio com topbar + sticky footer (sem step content ainda).
       Arquivos:
       - `kindrad-canvas/resources/views/layouts/wizard.blade.php` (novo)
       - `kindrad-canvas/resources/views/components/layout/wizard-topbar.blade.php` (novo — A.3)
@@ -51,7 +53,7 @@ Antes de implementar, leia:
       Design ref: A.3 (`wizard-topbar`), A.4 (`wizard-footer`), A.6 (`layouts/wizard.blade.php`); tokens `primary #c0c1ff`, `surface-container`, `outline-variant`; `.glass-card` reaproveitada do app shell.
       Traces: SPEC REQ-U1, screens.md S3.3
 
-- [ ] **Task:** Criar Blade component de progress bar customizado que aceita `step` (int 1-7) e `total` (int 7).
+- [x] **Task:** Criar Blade component de progress bar customizado que aceita `step` (int 1-7) e `total` (int 7).
       Arquivos:
       - `kindrad-canvas/resources/views/components/wizard/progress-bar.blade.php` (novo)
       Mudança: Renderiza barra com `h-[2px] bg-surface-container-highest rounded-full` e fill `bg-primary shadow-[0_0_10px_rgba(192,193,255,0.6)]` width = `(step / total) * 100%`. Inclui label `STEP 0{step} OF 07` (mono-sm primary) + section name (mono-sm on-surface-variant, passado via prop `sectionName`).
@@ -64,7 +66,7 @@ Antes de implementar, leia:
 
 ### Phase 1.2: Route `/projects/new` + parent Livewire `Projects\Wizard` + first render
 
-- [ ] **Task:** Criar parent Livewire component `App\Livewire\Projects\Wizard` via `php artisan make:livewire Projects/Wizard`.
+- [x] **Task:** Criar parent Livewire component `App\Livewire\Projects\Wizard` via `php artisan make:livewire Projects/Wizard`.
       Arquivos:
       - `kindrad-canvas/app/Livewire/Projects/Wizard.php` (novo)
       - `kindrad-canvas/resources/views/livewire/projects/wizard.blade.php` (novo)
@@ -78,7 +80,7 @@ Antes de implementar, leia:
       - `tests/Feature/Projects/WizardStartTest.php` — `test_clicking_new_project_creates_draft_row`, `test_draft_row_belongs_to_current_user`
       Traces: SPEC REQ-01, US-3.1, workflow 1
 
-- [ ] **Task:** Adicionar rota `GET /projects/new` com middleware `auth` e named route `projects.new`.
+- [x] **Task:** Adicionar rota `GET /projects/new` com middleware `auth` e named route `projects.new`.
       Arquivos:
       - `kindrad-canvas/routes/web.php` (alterado — adicionar dentro do `Route::middleware(['auth', 'verified'])` group)
       Mudança: Linha `Route::get('projects/new', App\Livewire\Projects\Wizard::class)->name('projects.new');`. Sem POSTs — todas as mutações via Livewire actions. Substituir a rota `dashboard` existente por uma referência explícita ao CTA do dashboard (não escopo desta task).
@@ -92,7 +94,7 @@ Antes de implementar, leia:
 
 ### Phase 1.3: Footer step navigation actions + Validation gate
 
-- [ ] **Task:** Implementar actions `next()`, `back()`, `goToStep(int $step)` no parent com regras de progressão.
+- [x] **Task:** Implementar actions `next()`, `back()`, `goToStep(int $step)` no parent com regras de progressão.
       Arquivos:
       - `kindrad-canvas/app/Livewire/Projects/Wizard.php` (alterado)
       - `kindrad-canvas/resources/views/livewire/projects/wizard.blade.php` (alterado)
@@ -108,7 +110,7 @@ Antes de implementar, leia:
 
 ### Phase 1.4: Exit wizard confirmation + dashboard CTA
 
-- [ ] **Task:** Wire do Exit button no topbar para confirmar saída via `<flux:modal>` e redirecionar para `route('dashboard')`.
+- [x] **Task:** Wire do Exit button no topbar para confirmar saída via `<flux:modal>` e redirecionar para `route('dashboard')`.
       Arquivos:
       - `kindrad-canvas/resources/views/components/layout/wizard-topbar.blade.php` (alterado)
       - `kindrad-canvas/resources/views/livewire/projects/wizard.blade.php` (alterado — slot para modal)
@@ -132,7 +134,7 @@ Antes de implementar, leia:
 
 ### Phase 2.1: Step 1 child component + `selectMode` action
 
-- [ ] **Task:** Criar `App\Livewire\Projects\Wizard\Steps\Mode` (step 1) que renderiza tiles de `project_modes` filtrados a `slug IN ('free','mug')`.
+- [x] **Task:** Criar `App\Livewire\Projects\Wizard\Steps\Mode` (step 1) que renderiza tiles de `project_modes` filtrados a `slug IN ('free','mug')`.
       Arquivos:
       - `kindrad-canvas/app/Livewire/Projects/Wizard/Steps/Mode.php` (novo — via `php artisan make:livewire Projects/Wizard/Steps/Mode`)
       - `kindrad-canvas/resources/views/livewire/projects/wizard/steps/mode.blade.php` (novo)
@@ -145,7 +147,7 @@ Antes de implementar, leia:
       Design ref: B.5 Wizard Tile (text variant); tokens `selection-glow`, `.glass-card`, iconografia Material Symbols
       Traces: SPEC REQ-02, US-3.1, US-6.1, workflow 1
 
-- [ ] **Task:** Implementar `selectMode(int $modeId)` no parent: valida existence + slug ∈ `('free','mug')`, persiste `projects.mode_id`, avança step.
+- [x] **Task:** Implementar `selectMode(int $modeId)` no parent: valida existence + slug ∈ `('free','mug')`, persiste `projects.mode_id`, avança step.
       Arquivos:
       - `kindrad-canvas/app/Livewire/Projects/Wizard.php` (alterado)
       Mudança: action `selectMode(int $modeId): void` chama `$this->authorize('update', $project)`, valida que o mode existe com slug ∈ (`free`,`mug`), atualiza `projects.mode_id`, seta `$this->modeId`, e avança `$step = 2`. Adicionar à `rules()`: `'modeId' => ['required','integer','exists:project_modes,id']`.
@@ -159,7 +161,7 @@ Antes de implementar, leia:
 
 ### Phase 2.2: Step 1 read-only flag + selection recovery on reload
 
-- [ ] **Task:** Após mount, mostrar mode selecionado highlighted + impedir nova seleção se `Project::isModeLocked()` (forward-declared helper, vacuously true para `first_generated_at !== null`).
+- [x] **Task:** Após mount, mostrar mode selecionado highlighted + impedir nova seleção se `Project::isModeLocked()` (forward-declared helper, vacuously true para `first_generated_at !== null`).
       Arquivos:
       - `kindrad-canvas/app/Livewire/Projects/Wizard/Steps/Mode.php` (alterado)
       - `kindrad-canvas/app/Livewire/Projects/Wizard.php` (alterado)
@@ -184,7 +186,7 @@ Antes de implementar, leia:
 
 ### Phase 3.1: Step 2 — Category picker
 
-- [ ] **Task:** Criar `App\Livewire\Projects\Wizard\Steps\Category` (step 2) com query filtrada `mug product + active status`.
+- [x] **Task:** Criar `App\Livewire\Projects\Wizard\Steps\Category` (step 2) com query filtrada `mug product + active status`.
       Arquivos:
       - `kindrad-canvas/app/Livewire/Projects/Wizard/Steps/Category.php` (novo)
       - `kindrad-canvas/resources/views/livewire/projects/wizard/steps/category.blade.php` (novo)
@@ -200,7 +202,7 @@ Antes de implementar, leia:
       Traces: SPEC REQ-03, US-3.2, workflow 2
       Design ref: B.5 text variant, F.1 empty-state card, tokens `.selection-glow`
 
-- [ ] **Task:** Implementar `selectCategory(int $categoryId)` no parent com `authorize('update')` e validação de slug do product.
+- [x] **Task:** Implementar `selectCategory(int $categoryId)` no parent com `authorize('update')` e validação de slug do product.
       Arquivos:
       - `kindrad-canvas/app/Livewire/Projects/Wizard.php` (alterado)
       Mudança: action atualiza `projects.category_id`, seta `$categoryId`, avança `step = 3`. Reset de `styleId` e `layoutId` (cascade — selecionar categoria nova invalida styles/layouts).
@@ -214,7 +216,7 @@ Antes de implementar, leia:
 
 ### Phase 3.2: Step 3 — Style picker (filter via `category_styles` pivot)
 
-- [ ] **Task:** Criar `App\Livewire\Projects\Wizard\Steps\Style` (step 3) com query filtrada pelo pivot + status active.
+- [x] **Task:** Criar `App\Livewire\Projects\Wizard\Steps\Style` (step 3) com query filtrada pelo pivot + status active.
       Arquivos:
       - `kindrad-canvas/app/Livewire/Projects/Wizard/Steps/Style.php` (novo)
       - `kindrad-canvas/resources/views/livewire/projects/wizard/steps/style.blade.php` (novo)
@@ -229,7 +231,7 @@ Antes de implementar, leia:
       Traces: SPEC REQ-04, US-3.3, workflow 2
       Design ref: B.5 image variant, F.1 empty state, tokens `.selection-glow`
 
-- [ ] **Task:** Implementar `selectStyle(int $styleId)` no parent; cascade reset de `layoutId`.
+- [x] **Task:** Implementar `selectStyle(int $styleId)` no parent; cascade reset de `layoutId`.
       Arquivos:
       - `kindrad-canvas/app/Livewire/Projects/Wizard.php` (alterado)
       Mudança: action valida que a style existe, pertence ao pivot para a chosen category (server-side check), atualiza `projects.style_id`, seta `$styleId`, reseta `$layoutId = null`, avança `step = 4`.
@@ -242,7 +244,7 @@ Antes de implementar, leia:
 
 ### Phase 3.3: Step 4 — Layout picker (filter via `style_layouts` pivot)
 
-- [ ] **Task:** Criar `App\Livewire\Projects\Wizard\Steps\Layout` (step 4) com query filtrada pelo pivot.
+- [x] **Task:** Criar `App\Livewire\Projects\Wizard\Steps\Layout` (step 4) com query filtrada pelo pivot.
       Arquivos:
       - `kindrad-canvas/app/Livewire/Projects/Wizard/Steps/Layout.php` (novo)
       - `kindrad-canvas/resources/views/livewire/projects/wizard/steps/layout.blade.php` (novo)
@@ -256,7 +258,7 @@ Antes de implementar, leia:
       Traces: SPEC REQ-05, US-3.4, workflow 2
       Design ref: B.5 image variant, F.1 empty state
 
-- [ ] **Task:** Implementar `selectLayout(int $layoutId)` no parent.
+- [x] **Task:** Implementar `selectLayout(int $layoutId)` no parent.
       Arquivos:
       - `kindrad-canvas/app/Livewire/Projects/Wizard.php` (alterado)
       Mudança: action atualiza `projects.layout_id`, seta `$layoutId`, avança `step = 5`.
@@ -269,7 +271,7 @@ Antes de implementar, leia:
 
 ### Phase 3.4: Picker performance verification (REQ-N4)
 
-- [ ] **Task:** Adicionar teste de performance que mede query count e tempo do picker.
+- [x] **Task:** Adicionar teste de performance que mede query count e tempo do picker.
       Arquivos:
       - `tests/Feature/Projects/WizardPerformanceTest.php` (novo)
       Mudança: Teste renderiza cada step (2/3/4) com o seed catalog (6 categories × 5 styles × 4 layouts), conta queries via `DB::enableQueryLog()`, mede tempo `microtime(true)`. Assertions: ≤ 4 queries por step; < 300 ms por render.
@@ -293,7 +295,7 @@ Antes de implementar, leia:
 
 ### Phase 4.1: Dropzone Blade component + step 5 child
 
-- [ ] **Task:** Criar Blade component de dropzone file upload (C.6) com estados empty/preview/upload-failed.
+- [x] **Task:** Criar Blade component de dropzone file upload (C.6) com estados empty/preview/upload-failed.
       Arquivos:
       - `kindrad-canvas/resources/views/components/upload/dropzone.blade.php` (novo)
       Mudança: Props `wireModel`, `accept`, `maxSizeMb`, `previewUrl`. Empty state: `border-2 border-dashed border-primary/20 bg-primary/5 rounded-2xl p-stack-lg text-center` com icon `cloud_upload` (32px) + headline-md "Drag your photo here" + label-md "JPEG / PNG / WEBP up to 10 MB". Preview state: aspect-square thumbnail + Replace + Remove buttons inline. F.3 error banner se validation error existe.
@@ -305,7 +307,7 @@ Antes de implementar, leia:
       Design ref: C.6 File Upload Dropzone
       Traces: SPEC REQ-U5
 
-- [ ] **Task:** Criar step 5 child `App\Livewire\Projects\Wizard\Steps\SourceImage` que consome o `WithFileUploads` trait + usa o component `upload/dropzone`.
+- [x] **Task:** Criar step 5 child `App\Livewire\Projects\Wizard\Steps\SourceImage` que consome o `WithFileUploads` trait + usa o component `upload/dropzone`.
       Arquivos:
       - `kindrad-canvas/app/Livewire/Projects/Wizard/Steps/SourceImage.php` (novo)
       - `kindrad-canvas/resources/views/livewire/projects/wizard/steps/source-image.blade.php` (novo)
@@ -319,7 +321,7 @@ Antes de implementar, leia:
 
 ### Phase 4.2: Upload action — validation, persistence, S3 storage
 
-- [ ] **Task:** Implementar `uploadSourceImage()` no parent: validar mime/size, criar `source_images` row, copiar para S3, setar `projects.source_image_id`.
+- [x] **Task:** Implementar `uploadSourceImage()` no parent: validar mime/size, criar `source_images` row, copiar para S3, setar `projects.source_image_id`.
       Arquivos:
       - `kindrad-canvas/app/Livewire/Projects/Wizard.php` (alterado)
       Mudança: action `$this->authorize('update', $project)`; `validate(['photo' => ['required','file','mimes:jpeg,png,webp','max:10240']])`; gera UUID; constrói user-scoped key `source-images/{user_id}/{uuid}.{ext}`; `Storage::disk('s3')->putFileAs(dirname($key), $this->photo->getRealPath(), basename($key))`; cria `SourceImage` com `user_id`, `disk='s3'`, `path=$key`, `original_filename`, `mime_type`, `size_bytes`; atualiza `projects.source_image_id`; seta `$sourceImageId`. Erro de validation re-renderiza com F.3 banner.
@@ -336,7 +338,7 @@ Antes de implementar, leia:
 
 ### Phase 4.3: Replace + Remove + Skip actions
 
-- [ ] **Task:** Implementar `replaceSourceImage()` (re-uploads) e `removeSourceImage()` no parent.
+- [x] **Task:** Implementar `replaceSourceImage()` (re-uploads) e `removeSourceImage()` no parent.
       Arquivos:
       - `kindrad-canvas/app/Livewire/Projects/Wizard.php` (alterado)
       Mudança: `replaceSourceImage()` chama `uploadSourceImage` após o usuário escolher novo arquivo (mesma lógica; SPEC FLEXIBLE: deixamos o row anterior em DB sem FK cascade). `removeSourceImage()` seta `projects.source_image_id = null` (mantém row antigo em `source_images`); chama `$this->authorize('update', $project)`. Botão Skip no rodapé do step avança sem upload (`next()`).
@@ -350,7 +352,7 @@ Antes de implementar, leia:
 
 ### Phase 4.4: Validation gate for step 5 (Skip permitted) + step transition
 
-- [ ] **Task:** Permitir `next()` em step 5 sem upload (skip é válido) e avançar para step 6.
+- [x] **Task:** Permitir `next()` em step 5 sem upload (skip é válido) e avançar para step 6.
       Arquivos:
       - `kindrad-canvas/app/Livewire/Projects/Wizard.php` (alterado)
       - `kindrad-canvas/resources/views/livewire/projects/wizard.blade.php` (alterado)
@@ -375,7 +377,7 @@ Antes de implementar, leia:
 
 ### Phase 5.1: Step 6 child component + Form bindings
 
-- [ ] **Task:** Criar `App\Livewire\Projects\Wizard\Steps\Inputs` (step 6) com bindings `wire:model.live` para name/phrase/theme/dedicatoria.
+- [x] **Task:** Criar `App\Livewire\Projects\Wizard\Steps\Inputs` (step 6) com bindings `wire:model.live` para name/phrase/theme/dedicatoria.
       Arquivos:
       - `kindrad-canvas/app/Livewire/Projects/Wizard/Steps/Inputs.php` (novo)
       - `kindrad-canvas/resources/views/livewire/projects/wizard/steps/inputs.blade.php` (novo)
@@ -388,7 +390,7 @@ Antes de implementar, leia:
       Design ref: C.1 Flux input, tokens `mono-sm` para contadores
       Traces: SPEC REQ-U6, US-3.6
 
-- [ ] **Task:** Implementar `updateInput(string $key, string $value)` no parent para sincronizar.
+- [x] **Task:** Implementar `updateInput(string $key, string $value)` no parent para sincronizar.
       Arquivos:
       - `kindrad-canvas/app/Livewire/Projects/Wizard.php` (alterado)
       Mudança: action recebe key/value, atualiza `$inputs[$key] = $value;` (whitelist keys ∈ `['name','phrase','theme','dedicatoria']`).
@@ -401,7 +403,7 @@ Antes de implementar, leia:
 
 ### Phase 5.2: Validation rules + JSON persistence on `next()`
 
-- [ ] **Task:** Implementar `next()` em step 6: validar required + max length, persistir JSON, avançar.
+- [x] **Task:** Implementar `next()` em step 6: validar required + max length, persistir JSON, avançar.
       Arquivos:
       - `kindrad-canvas/app/Livewire/Projects/Wizard.php` (alterado)
       Mudança: action `$this->authorize('update', $project)`; valida `rules()` retornando `'inputs.name' => 'required|string|max:80'`, `'inputs.phrase' => 'nullable|string|max:240'`, `'inputs.theme' => 'nullable|string|max:120'`, `'inputs.dedicatoria' => 'nullable|string|max:500'`; em sucesso, atualiza `projects.inputs = $inputs` (array → JSON cast no model) e avança `step = 7`.
@@ -426,7 +428,7 @@ Antes de implementar, leia:
 
 ### Phase 6.1: Step 7 child component — summary card list
 
-- [ ] **Task:** Criar `App\Livewire\Projects\Wizard\Steps\Review` (step 7) que renderiza summary read-only com uma Edit button por seção.
+- [x] **Task:** Criar `App\Livewire\Projects\Wizard\Steps\Review` (step 7) que renderiza summary read-only com uma Edit button por seção.
       Arquivos:
       - `kindrad-canvas/app/Livewire/Projects/Wizard/Steps/Review.php` (novo)
       - `kindrad-canvas/resources/views/livewire/projects/wizard/steps/review.blade.php` (novo)
@@ -441,7 +443,7 @@ Antes de implementar, leia:
 
 ### Phase 6.2: Generate button disabled + tooltip + submit() seam stub
 
-- [ ] **Task:** Adicionar Generate CTA no Review com disabled state baseado em `credit_balance == 0` e tooltip `"You're out of credits"`.
+- [x] **Task:** Adicionar Generate CTA no Review com disabled state baseado em `credit_balance == 0` e tooltip `"You're out of credits"`.
       Arquivos:
       - `kindrad-canvas/app/Livewire/Projects/Wizard/Steps/Review.php` (alterado)
       - `kindrad-canvas/resources/views/livewire/projects/wizard/steps/review.blade.php` (alterado)
@@ -453,7 +455,7 @@ Antes de implementar, leia:
       Design ref: H status pill patterns (disabled state), tokens `error` (tooltip backdrop), `.active-glow` no hover enabled
       Traces: SPEC REQ-08, REQ-U7, US-3.7
 
-- [ ] **Task:** Implementar `submit()` no parent como seam stub — redirect para `projects.show` (que existirá em Phase 8) ou no-op marker.
+- [x] **Task:** Implementar `submit()` no parent como seam stub — redirect para `projects.show` (que existirá em Phase 8) ou no-op marker.
       Arquivos:
       - `kindrad-canvas/app/Livewire/Projects/Wizard.php` (alterado)
       Mudança: action `submit(): void` chama `$this->authorize('update', $project)`, valida `credit_balance > 0` (server-side, retorna mensagem se 0), e redireciona para `route('dashboard')` com `<flux:toast>` "Phase 7 generation not yet implemented" — pois `/projects/{id}` (Phase 8) ainda não existe. Comentário PHPDoc explica que Phase 7.3 substituirá este redirect por uma chamada `SubmitGeneration`.
@@ -466,7 +468,7 @@ Antes de implementar, leia:
 
 ### Phase 6.3: Review step routing + Edit navigation
 
-- [ ] **Task:** `goToStep(int $step)` em Review navega para cada passo preservando state, mas exige validação para steps > current.
+- [x] **Task:** `goToStep(int $step)` em Review navega para cada passo preservando state, mas exige validação para steps > current.
       Arquivos:
       - `kindrad-canvas/app/Livewire/Projects/Wizard.php` (alterado)
       Mudança: `goToStep(int $step)` aceita 1 ≤ step ≤ 7. Navegação para step anterior é livre (preserve). Navegação para step > current exige autorização + validação dos FKs intermediários (e.g., ir a 7 sem layout setado é bloqueado com mensagem "Complete earlier steps first").
@@ -489,7 +491,7 @@ Antes de implementar, leia:
 
 ### Phase 7.1: Re-authorization on every Livewire request (REQ-N3)
 
-- [ ] **Task:** Adicionar `authorizeOrAbort()` helper no parent chamado em `mount()` e `hydrate()` para re-validar `ProjectPolicy::view` em cada request.
+- [x] **Task:** Adicionar `authorizeOrAbort()` helper no parent chamado em `mount()` e `hydrate()` para re-validar `ProjectPolicy::view` em cada request.
       Arquivos:
       - `kindrad-canvas/app/Livewire/Projects/Wizard.php` (alterado)
       Mudança: extrair helper `authorizeOrAbort(): void` que carrega o `Project` via `$this->projectId`, chama `$this->authorize('view', $project)`, e aborta com 403 se não-owner. Chamado em `mount()` e `hydrate()`.
@@ -502,7 +504,7 @@ Antes de implementar, leia:
 
 ### Phase 7.2: Cross-action authorization sweep (todas as actions autenticadas)
 
-- [ ] **Task:** Audit todas as actions do parent (`selectMode`, `selectCategory`, `selectStyle`, `selectLayout`, `uploadSourceImage`, `removeSourceImage`, `replaceSourceImage`, `updateInput`, `next`, `back`, `goToStep`, `submit`) garantindo que cada uma chama `authorize('update', $project)` ou `authorizeOrAbort()`.
+- [x] **Task:** Audit todas as actions do parent (`selectMode`, `selectCategory`, `selectStyle`, `selectLayout`, `uploadSourceImage`, `removeSourceImage`, `replaceSourceImage`, `updateInput`, `next`, `back`, `goToStep`, `submit`) garantindo que cada uma chama `authorize('update', $project)` ou `authorizeOrAbort()`.
       Arquivos:
       - `kindrad-canvas/app/Livewire/Projects/Wizard.php` (alterado)
       Mudança: Extrair helper `authorizeUpdate(): void` (chama `authorizeOrAbort()` + checa ownership). Cada action ou helper chama logo após carregamento do Project.
@@ -515,7 +517,7 @@ Antes de implementar, leia:
 
 ### Phase 7.3: Soft-delete protection + first_generated_at guard
 
-- [ ] **Task:** Bloquear todas actions se `projects.deleted_at !== null` (soft-delete).
+- [x] **Task:** Bloquear todas actions se `projects.deleted_at !== null` (soft-delete).
       Arquivos:
       - `kindrad-canvas/app/Livewire/Projects/Wizard.php` (alterado)
       Mudança: helper `authorizeOrAbort()` checa `if ($project->trashed()) abort(404)` (not 403 — não vaza existence).
@@ -535,7 +537,7 @@ Antes de implementar, leia:
 
 ### Phase 8.1: End-to-end happy path feature test
 
-- [ ] **Task:** Criar feature test que executa o wizard completo de step 1 ao step 7 em uma única sessão.
+- [x] **Task:** Criar feature test que executa o wizard completo de step 1 ao step 7 em uma única sessão.
       Arquivos:
       - `tests/Feature/Projects/WizardEndToEndTest.php` (novo)
       Mudança: Test usa `actingAs($user)`, simula navegação: GET `/projects/new` → click `selectMode(mug)` → step 2 click `selectCategory(birthday)` → step 3 click `selectStyle(watercolor)` → step 4 click `selectLayout(centered)` → step 5 Skip → step 6 preenche inputs → step 7 Review mostra todos os selections.
@@ -548,7 +550,7 @@ Antes de implementar, leia:
 
 ### Phase 8.2: Pint + final test run
 
-- [ ] **Task:** Rodar `vendor/bin/pint --dirty --format agent` e `php artisan test --compact --filter=Projects`. Se passar, este feature está pronto para merge.
+- [x] **Task:** Rodar `vendor/bin/pint --dirty --format agent` e `php artisan test --compact --filter=Projects`. Se passar, este feature está pronto para merge.
       Arquivos: n/a
       Mudança: Comandos de checagem final; sem mudança de código. Documentar qualquer drift de formatação em commits subsequentes.
       Cobre: Boost rules finais

@@ -166,7 +166,7 @@ class Show extends Component
             'latestGeneration' => $latestGeneration,
             'currentPreview' => $currentPreview,
             'generations' => $this->generations(),
-        ])->layout('components.layouts.app', [
+        ])->layout('layouts::app', [
             'title' => $this->project->title ?: __('Untitled project'),
         ]);
     }

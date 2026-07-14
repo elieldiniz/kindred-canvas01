@@ -121,6 +121,32 @@ test('go to step validates range', function (): void {
         ->assertSet('step', 3);
 });
 
+test('wizard resumes at review after inputs were persisted', function (): void {
+    $this->seed(CatalogSeeder::class);
+
+    $user = User::factory()->create();
+
+    actingAs($user);
+
+    Livewire::test(Wizard::class);
+
+    $project = Project::where('user_id', $user->id)->firstOrFail();
+
+    $project->update([
+        'inputs' => [
+            'name' => 'Alice',
+            'phrase' => 'Happy birthday',
+            'theme' => 'Flowers',
+            'dedicatoria' => 'With love',
+        ],
+    ]);
+
+    Livewire::test(Wizard::class, ['id' => $project->id])
+        ->assertSet('projectId', $project->id)
+        ->assertSet('inputs.name', 'Alice')
+        ->assertSet('step', 7);
+});
+
 test('wizard mount publishes expected properties to project on db', function (): void {
     $this->seed(CatalogSeeder::class);
 

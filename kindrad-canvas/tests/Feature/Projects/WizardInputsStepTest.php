@@ -49,6 +49,26 @@ test('step 6 renders four inputs', function (): void {
         ->assertSee('Dedicatoria');
 });
 
+test('step 6 renders maxlength counters', function (): void {
+    $this->seed(CatalogSeeder::class);
+
+    $user = User::factory()->create();
+
+    ['project' => $project] = step6Wizard($user);
+
+    Livewire::test(InputsStep::class, ['projectId' => $project->id, 'inputs' => []])
+        ->assertSeeHtml('maxlength="80"')
+        ->assertSeeHtml('maxlength="240"')
+        ->assertSeeHtml('maxlength="120"')
+        ->assertSeeHtml('maxlength="500"')
+        ->assertSee('0/80')
+        ->assertSee('0/240')
+        ->assertSee('0/120')
+        ->assertSee('0/500')
+        ->set('name', 'Alice')
+        ->assertSee('5/80');
+});
+
 test('update input persists to state', function (): void {
     $this->seed(CatalogSeeder::class);
 

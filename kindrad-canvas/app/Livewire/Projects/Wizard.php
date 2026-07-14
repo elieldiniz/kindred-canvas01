@@ -473,6 +473,10 @@ class Wizard extends Component
             $step = 5;
         }
 
+        if (filled($this->inputs['name'] ?? null)) {
+            $step = 7;
+        }
+
         return $step;
     }
 

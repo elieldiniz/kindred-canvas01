@@ -85,6 +85,28 @@ test('empty state when no styles for category', function (): void {
         ->toContain('Browse other categories');
 });
 
+test('style tiles render image interaction and selection states', function (): void {
+    $this->seed(CatalogSeeder::class);
+
+    $user = User::factory()->create();
+
+    actingAs($user);
+
+    $mug = ProjectMode::where('slug', 'mug')->firstOrFail();
+    $birthday = Category::where('slug', 'birthday')->firstOrFail();
+    $watercolor = StyleModel::where('slug', 'watercolor')->firstOrFail();
+
+    Livewire::test(Wizard::class)
+        ->call('selectMode', $mug->id)
+        ->call('selectCategory', $birthday->id)
+        ->assertSeeHtml('aspect-square')
+        ->call('selectStyle', $watercolor->id)
+        ->call('goToStep', 3)
+        ->assertSeeHtml('selection-glow')
+        ->assertSeeHtml('active-selection')
+        ->assertSeeHtml('wizard-style-tile-selected');
+});
+
 test('selecting style persists and advances', function (): void {
     $this->seed(CatalogSeeder::class);
 

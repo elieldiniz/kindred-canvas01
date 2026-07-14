@@ -9,3 +9,4 @@ Artisan::command('inspire', function () {
 })->purpose('Display an inspiring quote');
 
 Schedule::command('projects:purge-deleted')->daily()->withoutOverlapping();
+Schedule::command('app:recover-stale-generations')->everyTwoMinutes()->withoutOverlapping();

@@ -63,8 +63,7 @@ test('displays processing state when latest is processing', function (): void {
     $this->actingAs($user);
 
     Livewire::test(Show::class, ['project' => $project])
-        ->assertSee('AI Generating...')
-        ->assertSee('Progress is being monitored automatically every 2 seconds.');
+        ->assertSee('AI Generating...');
 });
 
 test('history orders newest first', function (): void {

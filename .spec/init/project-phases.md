@@ -2,6 +2,8 @@
 
 <!-- inputs: project-description.md@sha256:4fb8c4284951 user-stories.md@sha256:880bd7ad3732 database-schema.md@sha256:2906da65676a -->
 
+> **Drift correction (2026-07-14):** this file was previously marked `[x]` for many tasks that are NOT implemented. Audit found and corrected: Phase 3.2 (Google OAuth), 3.3 (partial — "Continue with Google" button depends on 3.2), 4.1 (no credit_balance widget), 4.2 (no credits history page), 5.1 (partial — only middleware exists), 5.2-5.8 (all missing), 7.4 (Reverb broadcasting skipped), 7.5 (partial — polling only). See `Status (2026-07-14)` lines under each affected task.
+
 ## Overview
 
 The build is organized foundation-first: the database, the domain models, and the credit ledger must exist before any feature that touches them. The first user-facing milestone is **account + credits** (sign up lands you with a balance you can see). Then the **catalog** (products, categories, styles, layouts, prompt templates) is seeded and exposed to admins so the project wizard has something to render. The **project wizard**, **AI generation pipeline**, **result & download**, and **admin CRUD** are delivered as four parallel-capable feature phases, each ~10–15 tasks, sized for a single focused agent session. Mockups, payments, and multi-product expansion are explicitly out of MVP scope and sit in Phase 9 as deferred work.
@@ -140,6 +142,7 @@ Everything below is **new work** layered on top of that baseline.
   - **Acceptance criteria:** Clicking "Continue with Google" redirects to Google. Callback either links to existing user (no double-grant) or creates new user (grants 5 credits) and creates `oauth_accounts` row. Cancel returns to login with no error.
   - **Feature tests:** `Auth\GoogleOAuthTest::test_new_user_creates_account_and_grant`, `Auth\GoogleOAuthTest::test_existing_email_links_account_without_double_grant`, `Auth\GoogleOAuthTest::test_cancel_returns_to_login`
   - **Traces:** US-1.3
+  - **Status (2026-07-14):** Done. `laravel/socialite ^5.28` installed. `oauth_accounts` table + `OAuthAccount` model + factory + `OAuthAccountManager` service + `OAuthController` (`auth/{provider}` + `auth/{provider}/callback` named `auth.oauth.redirect`/`auth.oauth.callback`). `<x-auth.oauth-button>` reused on login + register pages with "Or continue with email" divider. `User` model gains `oauthAccounts()` HasMany and `email_verified_at` fillable. 8 tests in `GoogleOAuthTest`: redirect, new user creates account + grants credits, existing email links without double-grant, idempotent re-link, invalid provider 404, broken Socialite response redirects to login with error, button visible on both pages.
 
 ### Phase 3.3: Login / Logout / Forgot password (Fortify defaults)
 
@@ -147,6 +150,7 @@ Everything below is **new work** layered on top of that baseline.
   - **Acceptance criteria:** Login throttle (5/10min) is active. Reset link valid 60 min. Logout invalidates session. "Continue with Google" button visible on both login and register pages.
   - **Feature tests:** `Auth\LoginThrottleTest::test_5_failures_throttle`, `Auth\PasswordResetTest::test_link_valid_60_minutes`, `Auth\LogoutTest::test_session_invalidated`
   - **Traces:** US-1.2, US-1.4, US-1.5
+  - **Status (2026-07-14):** Partial. Login/logout/forgot work via Fortify defaults. `PasswordResetTest` validates reset link TTL. "Continue with Google" button visible on login + register pages (delivered via Phase 3.2). **Still missing:** `Auth\LoginThrottleTest` (Fortify's default 5/min throttle is configured in `config/fortify.php` but not covered by an explicit test).
 
 ---
 
@@ -160,6 +164,7 @@ Everything below is **new work** layered on top of that baseline.
   - **Acceptance criteria:** Dashboard header shows user name and live `credit_balance`. Layout uses Flux components consistent with starter kit. Authenticated-only; redirects guests.
   - **Feature tests:** `Feature\DashboardTest::test_shows_user_name_and_credit_balance`
   - **Traces:** US-2.1
+  - **Status (2026-07-14):** Done. `dashboard.blade.php` shows greeting + flux:callout widget with `credit_balance` (data-test="dashboard-credit-balance"), out-of-credits copy, and "View history" CTA. `DashboardTest` has 5 tests: guest redirect, auth, name+balance widget, zero-balance copy, history link.
 
 ### Phase 4.2: Credits history page
 
@@ -167,6 +172,7 @@ Everything below is **new work** layered on top of that baseline.
   - **Acceptance criteria:** Page is paginated (25/page). Admin grant rows show the `notes` text. Reference links go to the relevant project or generation when applicable.
   - **Feature tests:** `Feature\CreditsHistoryTest::test_lists_user_transactions_newest_first`, `Feature\CreditsHistoryTest::test_admin_grant_notes_visible`
   - **Traces:** US-2.2
+  - **Status (2026-07-14):** Done. `App\Livewire\Credits\Index` (class-based) + `resources/views/livewire/credits/index.blade.php` + `Route::livewire('credits', ...)` named `credits.index` + sidebar nav link. 6 tests: guest redirect, auth, newest-first, admin grant notes, project reference link, empty state.
 
 ---
 
@@ -180,55 +186,63 @@ Everything below is **new work** layered on top of that baseline.
   - **Acceptance criteria:** `/admin` returns 403 for non-admins. "Admin" link hidden for non-admins. Admin layout uses Flux sidebar.
   - **Feature tests:** `Feature\Admin\AccessGateTest::test_non_admin_gets_403`, `Feature\Admin\AccessGateTest::test_admin_link_visibility`
   - **Traces:** US-7.1
+  - **Status (2026-07-14):** Done. `App\Livewire\Admin\Dashboard` mounted at `/admin` under `Route::middleware('admin')->prefix('admin')->name('admin.')`. `components/layouts/admin.blade.php` provides 260px secondary sidebar w/ `surface-container` + Flux `navlist` for Overview / Catalog (5 disabled placeholders: Products, Categories, Styles, Layouts, Prompt templates) / People (Users, Audit log disabled) + sticky topbar w/ "Admin" badge (`shield` Material icon) + Back to app. `App\Livewire\Admin\Dashboard` renders 4 metric tiles (users, generations, credits in circulation, catalog coverage) + audit log preview table. Sidebar user-nav shows "Admin" item only when `auth()->user()->is_admin`. 8 tests in `Feature\Admin\AccessGateTest`: guest redirect, non-admin 403, non-admin no link, admin access, admin link visible, metrics render, sidebar placeholders, empty audit log.
 
 ### Phase 5.2: Admin Products CRUD
 
-- [x] **Task:** `Livewire\Admin\Products\*` (Index, Create, Edit) + routes; form captures all print spec fields.
+- [ ] **Task:** `Livewire\Admin\Products\*` (Index, Create, Edit) + routes; form captures all print spec fields.
   - **Acceptance criteria:** Admins can create/edit/deactivate a product. Slug unique. Deactivating a product hides it from the user wizard but does not touch historical projects.
   - **Feature tests:** `Feature\Admin\ProductsTest::test_admin_can_create_product`, `Feature\Admin\ProductsTest::test_slug_unique`, `Feature\Admin\ProductsTest::test_deactivation_hides_from_wizard`
   - **Traces:** US-7.2
+  - **Status (2026-07-14):** Missing. No `app/Livewire/Admin/Products*`.
 
 ### Phase 5.3: Admin Categories CRUD + style associations
 
-- [x] **Task:** `Livewire\Admin\Categories\*` with many-to-many style picker.
+- [ ] **Task:** `Livewire\Admin\Categories\*` with many-to-many style picker.
   - **Acceptance criteria:** Admins can create/edit categories with thumbnail upload to S3; assign/unassign styles; slug unique per product.
   - **Feature tests:** `Feature\Admin\CategoriesTest::test_admin_can_create_category`, `Feature\Admin\CategoriesTest::test_style_associations_persist`
   - **Traces:** US-7.3
+  - **Status (2026-07-14):** Missing.
 
 ### Phase 5.4: Admin Styles CRUD + category associations
 
-- [x] **Task:** `Livewire\Admin\Styles\*` with category picker.
+- [ ] **Task:** `Livewire\Admin\Styles\*` with category picker.
   - **Acceptance criteria:** Edit `prompt_fragment` and category associations; thumbnail upload.
   - **Feature tests:** `Feature\Admin\StylesTest::test_admin_can_edit_prompt_fragment`
   - **Traces:** US-7.4
+  - **Status (2026-07-14):** Missing.
 
 ### Phase 5.5: Admin Layouts CRUD + safe-area JSON editor
 
-- [x] **Task:** `Livewire\Admin\Layouts\*` with safe-area JSON editor and style associations.
+- [ ] **Task:** `Livewire\Admin\Layouts\*` with safe-area JSON editor and style associations.
   - **Acceptance criteria:** Admins can edit `safe_area_overlay` JSON; preview image upload; style associations.
   - **Feature tests:** `Feature\Admin\LayoutsTest::test_safe_area_overlay_persists`
   - **Traces:** US-7.5
+  - **Status (2026-07-14):** Missing.
 
 ### Phase 5.6: Admin Prompt Templates editor
 
-- [x] **Task:** `Livewire\Admin\PromptTemplates\*` keyed by the 4-tuple; textarea renders `{{placeholders}}` with placeholder hints; saving bumps `version`.
+- [ ] **Task:** `Livewire\Admin\PromptTemplates\*` keyed by the 4-tuple; textarea renders `{{placeholders}}` with placeholder hints; saving bumps `version`.
   - **Acceptance criteria:** Saving a template increments its `version` and is effective for the next generation immediately.
   - **Feature tests:** `Feature\Admin\PromptTemplatesTest::test_save_bumps_version`, `Feature\Admin\PromptTemplatesTest::test_4tuple_uniqueness`
   - **Traces:** US-7.6
+  - **Status (2026-07-14):** Missing.
 
 ### Phase 5.7: Admin Users + grant credits
 
-- [x] **Task:** `Livewire\Admin\Users\*` with index, grant-credits modal, toggle-admin action; self-demotion prevented.
+- [ ] **Task:** `Livewire\Admin\Users\*` with index, grant-credits modal, toggle-admin action; self-demotion prevented.
   - **Acceptance criteria:** Granting credits writes a `credit_transactions` row via `CreditLedger::adminGrant` with `notes` text. Toggling admin on self shows an error and does not change.
   - **Feature tests:** `Feature\Admin\UsersTest::test_grant_credits_writes_ledger_row`, `Feature\Admin\UsersTest::test_self_demotion_blocked`
   - **Traces:** US-7.7
+  - **Status (2026-07-14):** Missing.
 
 ### Phase 5.8: Admin Metrics + Audit Log viewer
 
-- [x] **Task:** Admin dashboard widgets (total users, new users last 7 days, totals by generation status, credits in circulation, credits spent) computed from existing tables; append-only `audit_logs` viewer page.
+- [ ] **Task:** Admin dashboard widgets (total users, new users last 7 days, totals by generation status, credits in circulation, credits spent) computed from existing tables; append-only `audit_logs` viewer page.
   - **Acceptance criteria:** All metrics render. Audit log page lists recent entries newest-first, filterable by actor and action.
   - **Feature tests:** `Feature\Admin\MetricsTest::test_metrics_compute_from_tables`, `Feature\Admin\AuditLogTest::test_viewer_lists_entries`
   - **Traces:** US-7.8, US-8.3
+  - **Status (2026-07-14):** Missing.
 
 ---
 
@@ -293,17 +307,19 @@ Everything below is **new work** layered on top of that baseline.
 
 ### Phase 7.4: GenerationUpdated event + Reverb broadcasting
 
-- [x] **Task:** Create `App\Events\GenerationUpdated` (broadcast on `private-user.{userId}` Reverb channel) fired by the job on both completion and failure.
+- [ ] **Task:** Create `App\Events\GenerationUpdated` (broadcast on `private-user.{userId}` Reverb channel) fired by the job on both completion and failure.
   - **Acceptance criteria:** Broadcasting configured via `config/broadcasting.php` Reverb connection. Event implements `ShouldBroadcast`. Subscribing user receives the update with the latest Generation state.
   - **Feature tests:** `Events\GenerationUpdatedTest::test_broadcasts_on_private_user_channel`
   - **Traces:** US-4.2
+  - **Status (2026-07-14):** Skipped per vertical-slice decision (see HANDOFF.md). No `app/Events/`, no `config/broadcasting.php`, no `laravel/reverb` or `pusher-js` deps. `GenerateArtworkJob` does NOT dispatch an event on completion/failure.
 
 ### Phase 7.5: Live status UI on project page
 
-- [x] **Task:** Update `Livewire\Projects\Show` to subscribe to `private-user.{id}` channel via Echo; flip generation status from `processing` → `completed`/`failed` without reload; expose a "Retry" button on failure that calls SubmitGeneration again.
+- [ ] **Task:** Update `Livewire\Projects\Show` to subscribe to `private-user.{id}` channel via Echo; flip generation status from `processing` → `completed`/`failed` without reload; expose a "Retry" button on failure that calls SubmitGeneration again.
   - **Acceptance criteria:** UI updates within 1s of broadcast in test. Fallback: if WebSocket disconnected, polling `GET /generations/{id}` JSON endpoint on page reload restores correct state.
   - **Feature tests:** `Feature\Projects\LiveStatusTest::test_status_updates_on_event`, `Feature\Projects\LiveStatusTest::test_fallback_polling_returns_correct_status`
   - **Traces:** US-4.2
+  - **Status (2026-07-14):** Partial. `Show` uses `wire:poll` (polling fallback) but no Echo subscription. No "Retry" button on failure.
 
 ---
 

@@ -3,32 +3,52 @@
     <head>
         @include('partials.head')
     </head>
-    <body class="min-h-screen bg-white dark:bg-zinc-800">
-        <flux:sidebar sticky collapsible="mobile" class="border-e border-zinc-200 bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-900">
+    <body class="min-h-screen bg-background text-on-surface antialiased">
+        <flux:sidebar sticky collapsible="mobile" class="border-e border-outline-variant bg-surface-container text-on-surface">
             <flux:sidebar.header>
                 <x-app-logo :sidebar="true" href="{{ route('dashboard') }}" wire:navigate />
                 <flux:sidebar.collapse class="lg:hidden" />
             </flux:sidebar.header>
 
             <flux:sidebar.nav>
-                <flux:sidebar.group :heading="__('Platform')" class="grid">
-                    <flux:sidebar.item icon="home" :href="route('dashboard')" :current="request()->routeIs('dashboard')" wire:navigate>
-                        {{ __('Dashboard') }}
+                <p class="px-3 font-mono-sm text-mono-sm uppercase tracking-widest text-on-surface-variant">
+                    {{ __('Platform') }}
+                </p>
+
+                <flux:sidebar.item
+                    icon="home"
+                    :href="route('dashboard')"
+                    :current="request()->routeIs('dashboard')"
+                    wire:navigate
+                    data-test="sidebar-dashboard-link"
+                >
+                    {{ __('Dashboard') }}
+                </flux:sidebar.item>
+
+                <flux:sidebar.item
+                    icon="receipt-percent"
+                    :href="route('credits.index')"
+                    :current="request()->routeIs('credits.index')"
+                    wire:navigate
+                    data-test="sidebar-credits-link"
+                >
+                    {{ __('Credits') }}
+                </flux:sidebar.item>
+
+                @if (auth()->user()?->is_admin)
+                    <flux:sidebar.item
+                        icon="shield-check"
+                        :href="route('admin.dashboard')"
+                        :current="request()->routeIs('admin.*')"
+                        wire:navigate
+                        data-test="sidebar-admin-link"
+                    >
+                        {{ __('Admin') }}
                     </flux:sidebar.item>
-                </flux:sidebar.group>
+                @endif
             </flux:sidebar.nav>
 
             <flux:spacer />
-
-            <flux:sidebar.nav>
-                <flux:sidebar.item icon="folder-git-2" href="https://github.com/laravel/livewire-starter-kit" target="_blank">
-                    {{ __('Repository') }}
-                </flux:sidebar.item>
-
-                <flux:sidebar.item icon="book-open-text" href="https://laravel.com/docs/starter-kits#livewire" target="_blank">
-                    {{ __('Documentation') }}
-                </flux:sidebar.item>
-            </flux:sidebar.nav>
 
             <x-desktop-user-menu class="hidden lg:block" :name="auth()->user()->name" />
         </flux:sidebar>

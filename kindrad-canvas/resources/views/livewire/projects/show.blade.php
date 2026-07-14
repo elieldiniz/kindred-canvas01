@@ -1,166 +1,206 @@
-<div class="relative min-h-full overflow-hidden px-6 py-8 lg:px-10">
+<div class="flex flex-col gap-section p-margin-page" data-test="project-show-page">
     @php
         $latestStatus = $latestGeneration?->status?->slug;
         $previewStatus = $currentPreview?->status?->slug;
         $statusClasses = [
-            'waiting' => 'bg-neutral-500/15 text-neutral-400',
-            'processing' => 'bg-indigo-400/15 text-indigo-300',
-            'completed' => 'bg-emerald-400/15 text-emerald-300',
-            'failed' => 'bg-red-400/15 text-red-300',
+            'waiting' => 'bg-surface-container-high text-on-surface-variant',
+            'processing' => 'bg-primary/15 text-primary',
+            'completed' => 'bg-success/15 text-success',
+            'failed' => 'bg-error/15 text-error',
         ];
+        $total = $this->totalCount();
     @endphp
 
-    <div class="pointer-events-none absolute -right-40 -top-40 h-[500px] w-[500px] rounded-full bg-indigo-400/5 blur-[120px]"></div>
-    <div class="pointer-events-none absolute -bottom-40 -left-40 h-[400px] w-[400px] rounded-full bg-fuchsia-400/10 blur-[100px]"></div>
+    <header class="flex flex-col gap-stack-sm sm:flex-row sm:items-end sm:justify-between" data-test="project-header">
+        <div>
+            <div class="flex flex-wrap items-center gap-2">
+                <h1 class="font-headline-lg text-headline-lg text-on-surface" data-test="project-title">
+                    {{ $project->title ?: __('Untitled project') }}
+                </h1>
+                @if ($latestGeneration)
+                    <span class="inline-flex items-center rounded-full px-2 py-0.5 font-mono-xs text-mono-xs {{ $statusClasses[$latestStatus] ?? $statusClasses['waiting'] }}">
+                        {{ $this->statusLabel($latestGeneration) }}
+                    </span>
+                @endif
+            </div>
+            <p class="font-mono-xs text-mono-xs text-on-surface-variant">
+                @if ($project->first_generated_at)
+                    {{ __('First generated :date', ['date' => $project->first_generated_at->format('M j, Y · H:i')]) }}
+                @else
+                    {{ __('Created :date', ['date' => $project->created_at->format('M j, Y · H:i')]) }}
+                @endif
+            </p>
+        </div>
+        <a
+            href="{{ route('projects.new', ['id' => $project->id]) }}"
+            wire:navigate
+            class="font-mono-xs text-mono-xs text-primary hover:underline"
+        >
+            {{ __('Edit project') }} →
+        </a>
+    </header>
 
-    <div class="relative mx-auto flex max-w-7xl flex-col gap-8">
-        <header class="flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
-            <div class="flex flex-col gap-2">
-                <div class="flex flex-wrap items-center gap-3">
-                    <h1 class="text-3xl font-semibold text-neutral-900 dark:text-white">
-                        {{ $project->title ?: __('Untitled project') }}
-                    </h1>
-                    @if ($latestGeneration)
-                        <span class="inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold {{ $statusClasses[$latestStatus] ?? $statusClasses['waiting'] }}">
-                            {{ $this->statusLabel($latestGeneration) }}
-                        </span>
-                    @endif
-                </div>
-                <p class="font-mono text-xs text-neutral-500 dark:text-neutral-400">
-                    @if ($project->first_generated_at)
-                        {{ __('First generated :date', ['date' => $project->first_generated_at->format('M j, Y · H:i')]) }}
-                    @else
-                        {{ __('Created :date', ['date' => $project->created_at->format('M j, Y · H:i')]) }}
-                    @endif
-                </p>
+    @if ($total > 0)
+        <div class="grid gap-stack-sm sm:grid-cols-3" data-test="project-stats">
+            <div class="glass-card flex flex-col gap-1 p-stack-md">
+                <p class="font-headline-sm text-headline-sm text-on-surface">{{ $total }}</p>
+                <p class="font-mono-xs text-mono-xs text-on-surface-variant">{{ __('Total') }}</p>
             </div>
-            <flux:button :href="route('projects.new', ['id' => $project->id])" variant="ghost" icon="pencil-square" wire:navigate>
-                {{ __('Edit project') }}
-            </flux:button>
-        </header>
-
-        <div class="grid grid-cols-3 gap-3 sm:max-w-lg">
-            <div class="rounded-2xl border border-white/10 bg-white/5 p-4 backdrop-blur-xl">
-                <p class="text-2xl font-semibold">{{ $this->totalCount() }}</p>
-                <p class="text-xs text-neutral-500 dark:text-neutral-400">{{ __('Total') }}</p>
+            <div class="glass-card flex flex-col gap-1 p-stack-md">
+                <p class="font-headline-sm text-headline-sm text-success">{{ $this->completedCount() }}</p>
+                <p class="font-mono-xs text-mono-xs text-on-surface-variant">{{ __('Completed') }}</p>
             </div>
-            <div class="rounded-2xl border border-white/10 bg-white/5 p-4 backdrop-blur-xl">
-                <p class="text-2xl font-semibold text-emerald-400">{{ $this->completedCount() }}</p>
-                <p class="text-xs text-neutral-500 dark:text-neutral-400">{{ __('Completed') }}</p>
-            </div>
-            <div class="rounded-2xl border border-white/10 bg-white/5 p-4 backdrop-blur-xl">
-                <p class="text-2xl font-semibold text-red-400">{{ $this->failedCount() }}</p>
-                <p class="text-xs text-neutral-500 dark:text-neutral-400">{{ __('Failed') }}</p>
+            <div class="glass-card flex flex-col gap-1 p-stack-md">
+                <p class="font-headline-sm text-headline-sm text-error">{{ $this->failedCount() }}</p>
+                <p class="font-mono-xs text-mono-xs text-on-surface-variant">{{ __('Failed') }}</p>
             </div>
         </div>
+    @endif
 
-        @if (in_array($latestStatus, ['waiting', 'processing'], true) && $selectedGenerationId === null)
-            <section wire:poll.{{ $refreshIntervalMs }}ms="poll" class="relative flex min-h-[560px] items-center justify-center overflow-hidden rounded-3xl border border-white/10 bg-neutral-950/70 p-8 text-center shadow-2xl">
-                <div class="flex max-w-xl flex-col items-center gap-6">
-                    <div class="flex h-24 w-24 items-center justify-center rounded-full border-2 border-indigo-300/20 p-2">
-                        <div class="h-full w-full animate-spin rounded-full border-2 border-transparent border-t-indigo-300"></div>
-                    </div>
-                    <div class="flex flex-col gap-2">
-                        <h2 class="text-4xl font-semibold text-white">{{ __('AI Generating...') }}</h2>
-                        <p class="text-lg text-neutral-400">{{ __('We are weaving your concepts into a high-fidelity masterpiece.') }}</p>
-                        <p class="font-mono text-xs text-indigo-300">{{ __('Progress is being monitored automatically every 2 seconds.') }}</p>
-                    </div>
+    @if (in_array($latestStatus, ['waiting', 'processing'], true) && $selectedGenerationId === null)
+        <section wire:poll.{{ $refreshIntervalMs }}ms="poll" class="glass-card flex min-h-[400px] items-center justify-center p-8" data-test="project-generating">
+            <div class="flex flex-col items-center gap-stack-md text-center">
+                <div class="flex h-16 w-16 items-center justify-center rounded-full border-2 border-primary/20">
+                    <div class="h-full w-full animate-spin rounded-full border-2 border-transparent border-t-primary"></div>
                 </div>
-            </section>
-        @elseif ($currentPreview && $previewStatus === 'completed')
-            <section class="grid min-h-[600px] overflow-hidden rounded-3xl border border-white/10 bg-neutral-950/70 shadow-2xl lg:grid-cols-[minmax(0,7fr)_minmax(300px,3fr)]">
-                <div class="flex min-h-[480px] items-center justify-center bg-black/20 p-6 lg:p-10">
-                    <img class="max-h-[72vh] max-w-full rounded-2xl border border-white/10 object-contain shadow-2xl" src="{{ $this->previewUrl() }}" alt="{{ $project->title ?: __('Generated artwork') }}">
+                <div class="flex flex-col gap-1">
+                    <h2 class="font-headline-md text-headline-md text-on-surface">{{ __('AI Generating...') }}</h2>
+                    <p class="font-body-sm text-body-sm text-on-surface-variant">{{ __('We are weaving your concepts into a high-fidelity masterpiece.') }}</p>
                 </div>
-
-                <aside class="flex flex-col gap-6 border-t border-white/10 p-6 lg:border-l lg:border-t-0 lg:p-8">
-                    <div class="flex flex-col gap-3">
-                        <h2 class="text-xl font-semibold text-white">{{ __('Result Details') }}</h2>
-                        <div class="flex flex-wrap gap-2">
-                            @foreach ([$project->category?->name, $project->style?->name, $project->layout?->name] as $label)
-                                @if ($label)
-                                    <span class="rounded-full bg-white/10 px-3 py-1 text-xs font-medium text-indigo-300">{{ $label }}</span>
-                                @endif
-                            @endforeach
-                        </div>
-                    </div>
-
-                    <div class="rounded-xl border border-white/10 bg-white/5 p-4">
-                        <p class="text-xs font-semibold uppercase tracking-widest text-neutral-400">{{ __('Prompt Used') }}</p>
-                        <p class="mt-2 text-sm italic text-neutral-300">“{{ $currentPreview->prompt_snapshot }}”</p>
-                    </div>
-
-                    <dl class="grid grid-cols-2 gap-3 font-mono text-xs text-neutral-400">
-                        <div><dt>{{ __('Filename') }}</dt><dd class="mt-1 break-all text-neutral-200">{{ basename($currentPreview->result_path) }}</dd></div>
-                        <div><dt>{{ __('Dimensions') }}</dt><dd class="mt-1 text-neutral-200">{{ $currentPreview->result_width_px }} × {{ $currentPreview->result_height_px }}</dd></div>
-                        <div><dt>{{ __('Credits') }}</dt><dd class="mt-1 text-neutral-200">{{ $currentPreview->credits_charged }}</dd></div>
-                        <div><dt>{{ __('Completed') }}</dt><dd class="mt-1 text-neutral-200">{{ $currentPreview->completed_at?->format('M j · H:i') }}</dd></div>
-                    </dl>
-
-                    <div class="mt-auto flex flex-col gap-3">
-                        <flux:button variant="primary" icon="arrow-down-tray" wire:click="download({{ $currentPreview->id }})">
-                            {{ __('Download') }}
-                        </flux:button>
-                        <div class="grid grid-cols-2 gap-3">
-                            <flux:button variant="ghost" wire:click="regenerate">{{ __('Regenerate') }}</flux:button>
-                            <flux:button variant="ghost" disabled>{{ __('Edit Art') }}</flux:button>
-                        </div>
-                        <flux:button variant="danger" wire:click="openDeleteConfirmation">{{ __('Delete') }}</flux:button>
-                    </div>
-                </aside>
-            </section>
-        @elseif ($currentPreview && $previewStatus === 'failed')
-            <section class="flex min-h-[440px] items-center justify-center rounded-3xl border border-red-400/20 bg-red-950/10 p-8 text-center">
-                <div class="flex max-w-xl flex-col items-center gap-5">
-                    <span class="flex h-16 w-16 items-center justify-center rounded-full bg-red-400/15 text-2xl text-red-300">!</span>
-                    <h2 class="text-3xl font-semibold">{{ __('Generation failed') }}</h2>
-                    <p class="text-neutral-500 dark:text-neutral-400">{{ $currentPreview->failure_reason ?: __('The artwork could not be generated.') }}</p>
-                    <flux:button variant="primary" wire:click="retry({{ $currentPreview->id }})">{{ __('Retry') }}</flux:button>
-                </div>
-            </section>
-        @else
-            <section class="flex min-h-[360px] items-center justify-center rounded-3xl border border-white/10 bg-white/5 p-8 text-center">
-                <div class="flex max-w-md flex-col items-center gap-4">
-                    <h2 class="text-2xl font-semibold">{{ __('No completed artwork yet') }}</h2>
-                    <p class="text-neutral-500 dark:text-neutral-400">{{ __('Your first artwork will appear here when generation finishes.') }}</p>
-                </div>
-            </section>
-        @endif
-
-        <section class="flex flex-col gap-4">
-            <div>
-                <h2 class="text-2xl font-semibold">{{ __('Your History') }}</h2>
-                <p class="text-sm text-neutral-500 dark:text-neutral-400">{{ __('The 50 most recent generation attempts, newest first.') }}</p>
-            </div>
-
-            <div class="max-h-[32rem] space-y-3 overflow-y-auto pr-1">
-                @forelse ($generations as $generation)
-                    @php($generationStatus = $generation->status->slug)
-                    <button
-                        type="button"
-                        wire:key="generation-{{ $generation->id }}"
-                        wire:click="selectGeneration({{ $generation->id }})"
-                        class="flex w-full items-center justify-between gap-4 rounded-2xl border p-4 text-left transition {{ $selectedGenerationId === $generation->id ? 'border-indigo-300/60 bg-indigo-300/10' : 'border-white/10 bg-white/5 hover:border-indigo-300/30' }}"
-                    >
-                        <div class="min-w-0">
-                            <p class="truncate font-medium">{{ __('Generation #:id', ['id' => $generation->id]) }}</p>
-                            <p class="mt-1 font-mono text-xs text-neutral-500 dark:text-neutral-400">{{ $generation->created_at?->format('M j, Y · H:i:s') }}</p>
-                        </div>
-                        <div class="flex shrink-0 items-center gap-3">
-                            <span class="font-mono text-xs text-neutral-500 dark:text-neutral-400">{{ trans_choice(':count credit|:count credits', $generation->credits_charged, ['count' => $generation->credits_charged]) }}</span>
-                            <span class="rounded-full px-3 py-1 text-xs font-semibold {{ $statusClasses[$generationStatus] ?? $statusClasses['waiting'] }}">
-                                {{ $this->statusLabel($generation) }}
-                            </span>
-                        </div>
-                    </button>
-                @empty
-                    <div class="rounded-2xl border border-white/10 bg-white/5 p-8 text-center text-neutral-500 dark:text-neutral-400">
-                        {{ __('No generation history yet.') }}
-                    </div>
-                @endforelse
             </div>
         </section>
-    </div>
+    @elseif ($currentPreview && $previewStatus === 'completed')
+        <section class="glass-card flex flex-col overflow-hidden lg:flex-row" data-test="project-preview">
+            <div class="flex min-h-[360px] items-center justify-center p-stack-lg lg:flex-1">
+                <img
+                    class="max-h-[60vh] w-full rounded-xl object-contain"
+                    src="{{ $this->previewUrl() }}"
+                    alt="{{ $project->title ?: __('Generated artwork') }}"
+                />
+            </div>
+
+            <aside class="flex flex-col gap-stack-md border-t border-outline-variant p-stack-md lg:w-80 lg:border-l lg:border-t-0">
+                <h2 class="font-headline-sm text-headline-sm text-on-surface">{{ __('Result Details') }}</h2>
+
+                <div class="flex flex-wrap gap-1">
+                    @foreach ([$project->category?->name, $project->style?->name, $project->layout?->name] as $label)
+                        @if ($label)
+                            <span class="inline-flex items-center rounded-full bg-primary/10 px-2 py-0.5 font-mono-xs text-mono-xs text-primary">{{ $label }}</span>
+                        @endif
+                    @endforeach
+                </div>
+
+                <div class="glass-card p-stack-sm">
+                    <p class="font-mono-xs text-mono-xs uppercase tracking-widest text-on-surface-variant">{{ __('Prompt Used') }}</p>
+                    <p class="mt-1 font-body-xs text-body-xs italic text-on-surface-variant">"{{ $currentPreview->prompt_snapshot }}"</p>
+                </div>
+
+                <dl class="grid grid-cols-2 gap-2">
+                    <div class="flex flex-col gap-0.5">
+                        <dt class="font-mono-xs text-mono-xs text-on-surface-variant">{{ __('Filename') }}</dt>
+                        <dd class="font-body-xs text-body-xs text-on-surface break-all">{{ basename($currentPreview->result_path) }}</dd>
+                    </div>
+                    <div class="flex flex-col gap-0.5">
+                        <dt class="font-mono-xs text-mono-xs text-on-surface-variant">{{ __('Dimensions') }}</dt>
+                        <dd class="font-body-xs text-body-xs text-on-surface">{{ $currentPreview->result_width_px }} × {{ $currentPreview->result_height_px }}</dd>
+                    </div>
+                    <div class="flex flex-col gap-0.5">
+                        <dt class="font-mono-xs text-mono-xs text-on-surface-variant">{{ __('Credits') }}</dt>
+                        <dd class="font-body-xs text-body-xs text-on-surface">{{ $currentPreview->credits_charged }}</dd>
+                    </div>
+                    <div class="flex flex-col gap-0.5">
+                        <dt class="font-mono-xs text-mono-xs text-on-surface-variant">{{ __('Completed') }}</dt>
+                        <dd class="font-body-xs text-body-xs text-on-surface">{{ $currentPreview->completed_at?->format('M j · H:i') }}</dd>
+                    </div>
+                </dl>
+
+                <div class="mt-auto flex flex-col gap-2">
+                    <button
+                        type="button"
+                        wire:click="download({{ $currentPreview->id }})"
+                        class="gradient-generate flex items-center justify-center gap-stack-sm rounded-full py-3 font-label-md text-label-md font-bold text-on-primary"
+                    >
+                        <span class="material-symbols-outlined text-[18px]" aria-hidden="true">download</span>
+                        {{ __('Download') }}
+                    </button>
+                    <div class="grid grid-cols-2 gap-2">
+                        <button type="button" wire:click="regenerate" class="glass-card py-2 font-label-md text-label-md text-on-surface hover:bg-surface-container-high">
+                            {{ __('Regenerate') }}
+                        </button>
+                        <button type="button" disabled class="glass-card py-2 font-label-md text-label-md text-on-surface-variant">
+                            {{ __('Edit Art') }}
+                        </button>
+                    </div>
+                    <button
+                        type="button"
+                        wire:click="openDeleteConfirmation"
+                        class="py-2 font-label-md text-label-md text-error hover:bg-error/5"
+                    >
+                        {{ __('Delete') }}
+                    </button>
+                </div>
+            </aside>
+        </section>
+    @elseif ($currentPreview && $previewStatus === 'failed')
+        <section class="glass-card flex min-h-[360px] items-center justify-center p-8 text-center" data-test="project-failed">
+            <div class="flex flex-col items-center gap-stack-md">
+                <span class="flex h-12 w-12 items-center justify-center rounded-full bg-error/15 text-error">!</span>
+                <h2 class="font-headline-md text-headline-md text-on-surface">{{ __('Generation failed') }}</h2>
+                <p class="font-body-sm text-body-sm text-on-surface-variant">{{ $currentPreview->failure_reason ?: __('The artwork could not be generated.') }}</p>
+                <button
+                    type="button"
+                    wire:click="retry({{ $currentPreview->id }})"
+                    class="gradient-generate inline-flex items-center gap-stack-sm rounded-full px-stack-md py-2 font-label-md text-label-md font-bold text-on-primary"
+                >
+                    <span class="material-symbols-outlined text-[16px]" aria-hidden="true">refresh</span>
+                    {{ __('Retry') }}
+                </button>
+            </div>
+        </section>
+    @else
+        <section class="glass-card flex min-h-[300px] items-center justify-center p-8 text-center" data-test="project-empty">
+            <div class="flex flex-col items-center gap-stack-md">
+                <span class="material-symbols-outlined text-[40px] text-on-surface-variant" style="font-variation-settings: 'FILL' 0, 'wght' 400;">image</span>
+                <h2 class="font-headline-sm text-headline-sm text-on-surface">{{ __('No completed artwork yet') }}</h2>
+                <p class="font-body-sm text-body-sm text-on-surface-variant">{{ __('Your first artwork will appear here when generation finishes.') }}</p>
+            </div>
+        </section>
+    @endif
+
+    <section class="flex flex-col gap-stack-md" data-test="project-history">
+        <div>
+            <h2 class="font-headline-sm text-headline-sm text-on-surface">{{ __('Your History') }}</h2>
+            <p class="font-body-xs text-body-xs text-on-surface-variant">{{ __('The 50 most recent generation attempts, newest first.') }}</p>
+        </div>
+
+        <div class="flex max-h-[32rem] flex-col gap-2 overflow-y-auto pr-1">
+            @forelse ($generations as $generation)
+                @php($generationStatus = $generation->status->slug)
+                <button
+                    type="button"
+                    wire:key="generation-{{ $generation->id }}"
+                    wire:click="selectGeneration({{ $generation->id }})"
+                    class="glass-card flex w-full items-center justify-between gap-4 p-stack-sm text-left transition-all hover:-translate-y-0.5 hover:border-primary {{ $selectedGenerationId === $generation->id ? 'selection-glow active-selection' : '' }}"
+                    data-test="generation-row-{{ $generation->id }}"
+                >
+                    <div class="min-w-0">
+                        <p class="font-label-md text-label-md text-on-surface truncate">{{ __('Generation #:id', ['id' => $generation->id]) }}</p>
+                        <p class="font-mono-xs text-mono-xs text-on-surface-variant">{{ $generation->created_at?->format('M j, Y · H:i:s') }}</p>
+                    </div>
+                    <div class="flex shrink-0 items-center gap-2">
+                        <span class="font-mono-xs text-mono-xs text-on-surface-variant">{{ trans_choice(':count credit|:count credits', $generation->credits_charged, ['count' => $generation->credits_charged]) }}</span>
+                        <span class="inline-flex items-center rounded-full px-2 py-0.5 font-mono-xs text-mono-xs {{ $statusClasses[$generationStatus] ?? $statusClasses['waiting'] }}">
+                            {{ $this->statusLabel($generation) }}
+                        </span>
+                    </div>
+                </button>
+            @empty
+                <div class="glass-card p-stack-md text-center font-body-sm text-body-sm text-on-surface-variant">
+                    {{ __('No generation history yet.') }}
+                </div>
+            @endforelse
+        </div>
+    </section>
 
     <flux:modal wire:model="confirmDelete" class="md:w-96">
         <div class="flex flex-col gap-5">

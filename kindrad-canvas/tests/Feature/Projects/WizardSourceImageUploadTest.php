@@ -40,6 +40,43 @@ function wizardReadyProject(User $user): Project
     return Project::where('user_id', $user->id)->firstOrFail();
 }
 
+test('dropzone renders accessible empty state', function (): void {
+    $user = User::factory()->create();
+    $project = wizardReadyProject($user);
+
+    Livewire::test(SourceImageStep::class, ['projectId' => $project->id, 'sourceImageId' => null])
+        ->assertSeeHtml('data-test="wizard-source-dropzone"')
+        ->assertSeeHtml('data-has-preview="0"')
+        ->assertSeeHtml('tabindex="0"')
+        ->assertSeeHtml('wire:keydown.enter.prevent')
+        ->assertSeeHtml('data-test="wizard-source-input"')
+        ->assertSee('Drag your photo here')
+        ->assertSee('JPEG / PNG / WEBP up to 10 MB');
+});
+
+test('dropzone renders preview replace and remove states', function (): void {
+    $user = User::factory()->create();
+    $project = wizardReadyProject($user);
+
+    Livewire::test(SourceImageStep::class, ['projectId' => $project->id, 'sourceImageId' => null])
+        ->set('photo', UploadedFile::fake()->image('photo.jpg', 800, 600)->size(2048))
+        ->assertSeeHtml('data-has-preview="1"')
+        ->assertSeeHtml('data-test="wizard-source-replace"')
+        ->assertSeeHtml('data-test="wizard-source-replace-input"')
+        ->assertSeeHtml('data-test="wizard-source-remove-button"')
+        ->assertSee('Replace')
+        ->assertSee('Remove');
+});
+
+test('missing source image renders recovery banner', function (): void {
+    $user = User::factory()->create();
+    $project = wizardReadyProject($user);
+
+    Livewire::test(SourceImageStep::class, ['projectId' => $project->id, 'sourceImageId' => 999_999])
+        ->assertSeeHtml('data-test="wizard-source-image-missing"')
+        ->assertSee('The previous image is no longer available. Re-upload to continue.');
+});
+
 test('accepts valid image and creates source image', function (): void {
     $user = User::factory()->create();
     $project = wizardReadyProject($user);

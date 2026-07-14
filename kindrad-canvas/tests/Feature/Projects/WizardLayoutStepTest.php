@@ -83,6 +83,30 @@ test('empty state when no layouts', function (): void {
         ->toContain('Edit style');
 });
 
+test('layout tiles render image interaction and selection states', function (): void {
+    $this->seed(CatalogSeeder::class);
+
+    $user = User::factory()->create();
+
+    actingAs($user);
+
+    $mug = ProjectMode::where('slug', 'mug')->firstOrFail();
+    $birthday = Category::where('slug', 'birthday')->firstOrFail();
+    $watercolor = Style::where('slug', 'watercolor')->firstOrFail();
+    $centered = LayoutModel::where('slug', 'centered')->firstOrFail();
+
+    Livewire::test(Wizard::class)
+        ->call('selectMode', $mug->id)
+        ->call('selectCategory', $birthday->id)
+        ->call('selectStyle', $watercolor->id)
+        ->assertSeeHtml('aspect-square')
+        ->call('selectLayout', $centered->id)
+        ->call('goToStep', 4)
+        ->assertSeeHtml('selection-glow')
+        ->assertSeeHtml('active-selection')
+        ->assertSeeHtml('wizard-layout-tile-selected');
+});
+
 test('selecting layout persists and advances', function (): void {
     $this->seed(CatalogSeeder::class);
 

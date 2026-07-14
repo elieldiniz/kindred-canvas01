@@ -51,8 +51,12 @@ class PromptAssembler
         $theme = (string) ($inputs['theme'] ?? '');
         $dedicatoria = (string) ($inputs['dedicatoria'] ?? '');
         $imageTags = '';
+        $customPrompt = (string) ($project->custom_prompt ?? '');
 
         $printSpecs = $this->renderPrintSpecs($mode?->slug, $product);
+        $layoutInstructions = $this->renderLayoutInstructions($layout->slug);
+        $subjectType = $project->subject_type ? __('articles.subject_type.'.$project->subject_type) : '';
+        $pose = $project->pose?->name ?? '';
 
         $body = $template->body;
 
@@ -63,6 +67,11 @@ class PromptAssembler
             '{{image_tags}}' => $imageTags,
             '{{print_specs}}' => $printSpecs,
             '{{dedicatoria}}' => $dedicatoria,
+            '{{custom_prompt}}' => $customPrompt,
+            '{{subject_type}}' => $subjectType,
+            '{{pose}}' => $pose,
+            '{{layout_instructions}}' => $layoutInstructions,
+            '{{style_description}}' => $style->prompt_fragment,
         ];
 
         $prompt = strtr($body, $replacements);
@@ -97,11 +106,26 @@ class PromptAssembler
         }
 
         return sprintf(
-            '%smm × %smm, %d DPI, %smm safe area',
+            'Horizontal layout (landscape), aspect ratio 2.5:1, resolution %dx%dpx, optimized for sublimation printing, %smm × %smm at %d DPI, %smm safe area',
+            (int) round((float) $product->print_width_mm * (int) $product->min_dpi / 25.4),
+            (int) round((float) $product->print_height_mm * (int) $product->min_dpi / 25.4),
+            (int) $product->min_dpi,
             $product->print_width_mm,
             $product->print_height_mm,
             (int) $product->min_dpi,
             $product->safe_area_mm,
         );
+    }
+
+    private function renderLayoutInstructions(?string $layoutSlug): string
+    {
+        $instructions = [
+            'centered' => 'Main subject MUST be centered. Keep subject within central 60% of canvas width. Leave left and right areas lighter or decorative. Clean background. Do NOT place important elements near edges.',
+            'border_wrap' => 'Artwork must fill entire width. No empty areas. Seamless edges (left and right must connect). Background should flow continuously. Composition balanced across canvas.',
+            'full_bleed' => 'Create a repeating pattern. Small elements evenly distributed. Seamless horizontal tiling. Consistent spacing and style.',
+            'split_top_bottom' => 'Two compositions: left and right. Leave central 20% empty (handle area). Each side should have its own subject. Balanced composition. Avoid placing important elements in the center.',
+        ];
+
+        return $instructions[$layoutSlug] ?? '';
     }
 }

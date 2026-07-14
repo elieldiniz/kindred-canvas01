@@ -33,7 +33,9 @@ test('seeder is idempotent and produces the expected catalog', function (): void
     expect(Category::where('slug', 'kids')->exists())->toBeTrue();
 
     $mug = Product::where('slug', 'mug')->firstOrFail();
+    $freeArt = Product::where('slug', 'free_art')->firstOrFail();
     expect(Category::where('product_id', $mug->id)->count())->toBe(6);
+    expect(Category::where('product_id', $freeArt->id)->count())->toBe(6);
     expect(Style::whereIn('slug', ['watercolor', 'cartoon', 'realistic', 'pixel_art', 'minimalist_line'])->count())->toBe(5);
     expect(Layout::whereIn('slug', ['centered', 'border_wrap', 'full_bleed', 'split_top_bottom'])->count())->toBe(4);
 
@@ -41,6 +43,6 @@ test('seeder is idempotent and produces the expected catalog', function (): void
     $layoutIds = Layout::pluck('id')->all();
     $categoryIds = Category::pluck('id')->all();
 
-    expect(DB::table('category_styles')->whereIn('category_id', $categoryIds)->count())->toBe(30);
+    expect(DB::table('category_styles')->whereIn('category_id', $categoryIds)->count())->toBe(60);
     expect(DB::table('style_layouts')->whereIn('style_id', $styleIds)->count())->toBe(20);
 });
