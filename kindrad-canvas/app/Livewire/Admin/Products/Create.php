@@ -5,6 +5,7 @@ namespace App\Livewire\Admin\Products;
 use App\Models\ColorMode;
 use App\Models\Product;
 use App\Models\ProductStatus;
+use App\Services\AuditLogger;
 use Illuminate\Support\Str;
 use Livewire\Component;
 
@@ -36,7 +37,7 @@ class Create extends Component
         $this->slug = Str::slug($this->name);
     }
 
-    public function save(): void
+    public function save(AuditLogger $audit): void
     {
         $this->validate([
             'name' => ['required', 'string', 'max:255'],
@@ -49,10 +50,20 @@ class Create extends Component
             'color_mode_id' => ['required', 'exists:color_modes,id'],
         ]);
 
-        Product::create($this->only([
+        $product = Product::create($this->only([
             'name', 'slug', 'status_id', 'print_width_mm',
             'print_height_mm', 'min_dpi', 'safe_area_mm', 'color_mode_id',
         ]));
+
+        $audit->record(
+            actor: auth()->user(),
+            actionSlug: 'edit_product',
+            target: $product,
+            payload: ['event' => 'created', 'attributes' => $product->only([
+                'name', 'slug', 'status_id', 'print_width_mm',
+                'print_height_mm', 'min_dpi', 'safe_area_mm', 'color_mode_id',
+            ])],
+        );
 
         $this->redirect(route('admin.products.index'), navigate: true);
     }

@@ -37,20 +37,26 @@
             </div>
         @endif
 
-        <section class="flex flex-col gap-stack-lg sm:flex-row sm:items-start sm:justify-between" data-test="dashboard-hero">
+        <section class="flex flex-col gap-8 sm:flex-row sm:items-center sm:justify-between py-8 pb-2" data-test="dashboard-hero">
             <div>
-                <h1 class="font-display-lg text-display-lg text-on-surface" data-test="dashboard-greeting">
-                    {{ __('Welcome back, Curator.') }}
+                <h1 class="font-display-lg text-display-lg font-extrabold" data-test="dashboard-greeting">
+                    <span class="bg-gradient-to-r from-white via-white to-white/60 bg-clip-text text-transparent">
+                        {{ __('Welcome back,') }}
+                    </span>
+                    <br>
+                    <span class="bg-gradient-to-r from-primary via-purple-400 to-cyan-400 bg-clip-text text-transparent">
+                        {{ auth()->user()->name }}.
+                    </span>
                 </h1>
-                <p class="mt-stack-sm max-w-xl font-body-md text-body-md text-on-surface-variant">
+                <p class="mt-3 max-w-xl text-base text-white/50 leading-relaxed">
                     {{ __('Your creative studio is ready. What will you manifest today?') }}
                 </p>
 
-                <div class="mt-stack-md">
+                <div class="mt-6 flex items-center gap-4">
                     <a
                         href="{{ route('projects.new') }}"
                         wire:navigate
-                        class="gradient-generate inline-flex items-center gap-stack-sm rounded-full px-stack-lg py-3 font-label-md text-label-md font-bold text-on-primary shadow-lg shadow-primary/20"
+                        class="gradient-generate inline-flex items-center gap-2 rounded-full px-7 py-3.5 text-sm font-bold text-white shadow-lg shadow-primary/30 hover:shadow-primary/50 hover:scale-[1.02] transition-all duration-300 whitespace-nowrap"
                         data-test="dashboard-new-project-button"
                     >
                         <span class="material-symbols-outlined text-[18px]" aria-hidden="true">add</span>
@@ -59,16 +65,25 @@
                 </div>
             </div>
 
-            <div class="credits-badge w-fit shrink-0" data-test="dashboard-credits-card">
-                <span class="material-symbols-outlined text-[14px]" aria-hidden="true">bolt</span>
-                <span>{{ $creditBalance }} {{ __('credits') }}</span>
-                <a href="{{ route('credits.index') }}" wire:navigate class="ml-1 text-on-primary/70 hover:text-on-primary">
-                    →
+            <div class="shrink-0" data-test="dashboard-credits-card">
+                <a
+                    href="{{ route('credits.index') }}"
+                    wire:navigate
+                    class="group flex items-center gap-3 rounded-2xl border border-emerald-500/30 bg-gradient-to-br from-emerald-500/10 to-transparent px-5 py-4 shadow-[0_0_20px_rgba(52,211,153,0.1)] hover:shadow-[0_0_30px_rgba(52,211,153,0.2)] hover:border-emerald-500/50 transition-all duration-300"
+                >
+                    <span class="flex h-10 w-10 items-center justify-center rounded-full bg-emerald-500/20 text-emerald-400">
+                        <span class="material-symbols-outlined text-[20px]" style="font-variation-settings: 'FILL' 1, 'wght' 400;" aria-hidden="true">bolt</span>
+                    </span>
+                    <div>
+                        <p class="text-xl font-extrabold text-white leading-none">{{ $creditBalance }}</p>
+                        <p class="text-xs text-white/50 mt-0.5 uppercase tracking-widest">{{ __('credits') }}</p>
+                    </div>
+                    <span class="ml-2 text-white/30 group-hover:text-white/60 transition-colors text-lg">→</span>
                 </a>
             </div>
         </section>
 
-        <section class="grid gap-stack-sm sm:grid-cols-3" data-test="dashboard-stats-grid">
+        <section class="grid gap-stack-sm sm:grid-cols-2" data-test="dashboard-stats-grid">
             <div class="glass-card flex flex-col gap-stack-sm p-stack-md" data-test="dashboard-stat-generations">
                 <div class="flex items-center gap-2">
                     <span class="material-symbols-outlined text-[18px] text-primary" style="font-variation-settings: 'FILL' 0, 'wght' 400;">auto_awesome</span>
@@ -98,37 +113,16 @@
                     {{ $mostUsedStyle ? trans_choice(':count use|:count uses', $mostUsedStyle->uses, ['count' => $mostUsedStyle->uses]) : __('Run a generation to unlock insights') }}
                 </p>
             </div>
-
-            <a
-                href="#"
-                class="glass-card group flex flex-col gap-stack-sm p-stack-md transition-colors hover:border-primary hover:bg-primary/5"
-                data-test="dashboard-stat-upgrade-pack"
-            >
-                <span class="material-symbols-outlined text-[18px] text-on-surface-variant transition-transform group-hover:scale-110" style="font-variation-settings: 'FILL' 0, 'wght' 400;">rocket_launch</span>
-                <p class="font-headline-sm text-headline-sm text-on-surface transition-colors group-hover:text-primary">
-                    {{ __('Premium Pack') }}
-                </p>
-                <p class="font-mono-xs text-mono-xs text-on-surface-variant">
-                    {{ __('Unlock 4K export · priority queue') }}
-                </p>
-            </a>
         </section>
 
         <section class="flex flex-col gap-stack-md" data-test="dashboard-recent-projects">
-            <div class="flex items-center justify-between">
-                <div>
-                    <h2 class="font-headline-sm text-headline-sm text-on-surface">
-                        {{ __('Recent Projects') }}
-                    </h2>
-                    <p class="font-body-xs text-body-xs text-on-surface-variant">
-                        {{ __('Continue your latest work or browse everything you have manifested.') }}
-                    </p>
-                </div>
-                @if ($recentProjects->isNotEmpty())
-                    <a href="#" wire:navigate class="font-mono-xs text-mono-xs text-primary hover:underline">
-                        {{ __('View all projects') }} →
-                    </a>
-                @endif
+            <div>
+                <h2 class="font-headline-sm text-headline-sm text-on-surface">
+                    {{ __('Recent Projects') }}
+                </h2>
+                <p class="font-body-xs text-body-xs text-on-surface-variant">
+                    {{ __('Continue your latest work.') }}
+                </p>
             </div>
 
             @if ($recentProjects->isEmpty())

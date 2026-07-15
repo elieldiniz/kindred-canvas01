@@ -20,6 +20,8 @@ use App\Models\ProjectStatus;
 use App\Models\PromptTemplate;
 use App\Models\Style;
 use App\Models\StyleStatus;
+use App\Models\SubscriptionInterval;
+use App\Models\SubscriptionStatus;
 use Illuminate\Database\Seeder;
 
 class CatalogSeeder extends Seeder
@@ -108,6 +110,7 @@ class CatalogSeeder extends Seeder
         'generation_debit' => ['name' => 'Generation Debit', 'expected_sign' => '-'],
         'generation_refund' => ['name' => 'Generation Refund', 'expected_sign' => '+'],
         'admin_grant' => ['name' => 'Admin Grant', 'expected_sign' => '+'],
+        'subscription_credit_grant' => ['name' => 'Subscription Credit Grant', 'expected_sign' => '+'],
     ];
 
     /**
@@ -121,6 +124,29 @@ class CatalogSeeder extends Seeder
         'edit_style' => 'Edit Style',
         'edit_layout' => 'Edit Layout',
         'edit_prompt_template' => 'Edit Prompt Template',
+        'edit_subscription_plan' => 'Edit Subscription Plan',
+    ];
+
+    /**
+     * @var array<string, string>
+     */
+    private array $subscriptionIntervals = [
+        'month' => 'Mensal',
+        'year' => 'Anual',
+    ];
+
+    /**
+     * @var array<string, string>
+     */
+    private array $subscriptionStatuses = [
+        'active' => 'Ativo',
+        'trialing' => 'Em trial',
+        'past_due' => 'Pagamento atrasado',
+        'canceled' => 'Cancelado',
+        'incomplete' => 'Incompleto',
+        'incomplete_expired' => 'Incompleto expirado',
+        'unpaid' => 'Não pago',
+        'paused' => 'Pausado',
     ];
 
     /**
@@ -237,6 +263,7 @@ class CatalogSeeder extends Seeder
     {
         $this->seedLookups();
         $this->seedGenerationLookups();
+        $this->seedBillingLookups();
         $products = $this->seedProducts();
         $styles = $this->seedStyles();
         $layouts = $this->seedLayouts();
@@ -271,6 +298,17 @@ class CatalogSeeder extends Seeder
 
         foreach ($this->auditLogActions as $slug => $name) {
             AuditLogAction::firstOrCreate(['slug' => $slug], ['name' => $name]);
+        }
+    }
+
+    private function seedBillingLookups(): void
+    {
+        foreach ($this->subscriptionIntervals as $slug => $name) {
+            SubscriptionInterval::firstOrCreate(['slug' => $slug], ['name' => $name]);
+        }
+
+        foreach ($this->subscriptionStatuses as $slug => $name) {
+            SubscriptionStatus::firstOrCreate(['slug' => $slug], ['name' => $name]);
         }
     }
 

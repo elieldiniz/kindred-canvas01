@@ -1,5 +1,9 @@
 <?php
 
+use App\Livewire\Admin\Products\Create;
+use App\Livewire\Admin\Products\Edit;
+use App\Livewire\Admin\Products\Index;
+use App\Models\Category;
 use App\Models\ColorMode;
 use App\Models\Product;
 use App\Models\ProductStatus;
@@ -39,7 +43,7 @@ it('shows create form', function (): void {
 
 it('creates a new product', function (): void {
     Livewire::actingAs($this->admin)
-        ->test(\App\Livewire\Admin\Products\Create::class)
+        ->test(Create::class)
         ->set('name', 'Tote Bag')
         ->set('slug', 'tote-bag')
         ->set('print_width_mm', 300)
@@ -59,7 +63,7 @@ it('creates a new product', function (): void {
 
 it('validates required fields on create', function (): void {
     Livewire::actingAs($this->admin)
-        ->test(\App\Livewire\Admin\Products\Create::class)
+        ->test(Create::class)
         ->set('name', '')
         ->set('slug', '')
         ->call('save')
@@ -68,7 +72,7 @@ it('validates required fields on create', function (): void {
 
 it('validates unique slug on create', function (): void {
     Livewire::actingAs($this->admin)
-        ->test(\App\Livewire\Admin\Products\Create::class)
+        ->test(Create::class)
         ->set('name', 'Duplicate')
         ->set('slug', $this->product->slug)
         ->set('print_width_mm', 100)
@@ -88,7 +92,7 @@ it('shows edit form', function (): void {
 
 it('updates a product', function (): void {
     Livewire::actingAs($this->admin)
-        ->test(\App\Livewire\Admin\Products\Edit::class, ['product' => $this->product->id])
+        ->test(Edit::class, ['product' => $this->product->id])
         ->set('name', 'Updated Product')
         ->set('print_width_mm', 250)
         ->call('save')
@@ -103,7 +107,7 @@ it('updates a product', function (): void {
 
 it('validates required fields on update', function (): void {
     Livewire::actingAs($this->admin)
-        ->test(\App\Livewire\Admin\Products\Edit::class, ['product' => $this->product->id])
+        ->test(Edit::class, ['product' => $this->product->id])
         ->set('name', '')
         ->call('save')
         ->assertHasErrors(['name']);
@@ -111,11 +115,11 @@ it('validates required fields on update', function (): void {
 
 it('validates numeric fields on create', function (): void {
     Livewire::actingAs($this->admin)
-        ->test(\App\Livewire\Admin\Products\Create::class)
+        ->test(Create::class)
         ->set('name', 'Bad Product')
         ->set('slug', 'bad-product')
-        ->set('print_width_mm', 'not-a-number')
-        ->set('print_height_mm', 'not-a-number')
+        ->set('print_width_mm', 0)
+        ->set('print_height_mm', 0)
         ->set('status_id', ProductStatus::where('slug', 'active')->first()->id)
         ->set('color_mode_id', ColorMode::where('slug', 'rgb')->first()->id)
         ->call('save')
@@ -126,13 +130,10 @@ it('deletes a product via modal', function (): void {
     $product = Product::factory()->create(['name' => 'To Delete']);
 
     Livewire::actingAs($this->admin)
-        ->test(\App\Livewire\Admin\Products\Index::class)
+        ->test(Index::class)
         ->call('confirmDelete', $product->id)
         ->assertSet('confirmDelete', true)
-        ->assertSet('deleteId', $product->id);
-
-    Livewire::actingAs($this->admin)
-        ->test(\App\Livewire\Admin\Products\Index::class)
+        ->assertSet('deleteId', $product->id)
         ->call('delete')
         ->assertHasNoErrors();
 
@@ -141,10 +142,10 @@ it('deletes a product via modal', function (): void {
 
 it('prevents deleting a product that has categories', function (): void {
     $product = Product::factory()->create();
-    \App\Models\Category::factory()->create(['product_id' => $product->id]);
+    Category::factory()->create(['product_id' => $product->id]);
 
     Livewire::actingAs($this->admin)
-        ->test(\App\Livewire\Admin\Products\Index::class)
+        ->test(Index::class)
         ->call('confirmDelete', $product->id)
         ->call('delete')
         ->assertHasErrors(['deleteId']);

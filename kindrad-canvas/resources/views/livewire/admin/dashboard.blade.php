@@ -44,22 +44,139 @@
                 {{ __('Catalog coverage') }}
             </p>
             <p class="mt-stack-sm font-display-lg text-display-lg text-primary">
-                {{ __('Phase 5.2+') }}
+                {{ __('Products') }}
             </p>
             <p class="mt-stack-sm font-mono-sm text-mono-sm text-on-surface-variant">
-                {{ __('CRUD ships in next phase') }}
+                <flux:link :href="route('admin.products.index')" wire:navigate>
+                    {{ __('Manage catalog') }}
+                </flux:link>
             </p>
         </div>
     </section>
 
-    {{-- Audit log preview --}}
-    <section class="glass-card overflow-hidden" data-test="admin-audit-log">
-        <div class="flex items-center justify-between border-b border-outline-variant bg-surface-container-low p-stack-md">
+    {{-- Financial panel --}}
+    @php($statusBreakdown = $this->subscriptionStatusBreakdown())
+    @php($plansRevenue = $this->plansRevenue())
+    @php($mrr = $this->mrrFormatted())
+    @php($arr = $this->arrFormatted())
+
+    <section class="grid gap-stack-md lg:grid-cols-3" data-test="admin-financial-panel">
+        <div class="glass-card p-stack-lg" data-test="admin-financial-mrr">
+            <p class="font-mono-sm text-mono-sm uppercase tracking-widest text-on-surface-variant">
+                {{ __('Monthly Recurring Revenue') }}
+            </p>
+            <p class="mt-stack-sm font-display-lg text-display-lg text-primary">
+                {{ $mrr }}
+            </p>
+            <p class="mt-stack-sm font-mono-sm text-mono-sm text-on-surface-variant">
+                {{ __('ARR (annualized): :value', ['value' => $arr]) }}
+            </p>
+        </div>
+
+        <div class="glass-card p-stack-lg" data-test="admin-financial-arr">
+            <p class="font-mono-sm text-mono-sm uppercase tracking-widest text-on-surface-variant">
+                {{ __('Active subscriptions') }}
+            </p>
+            <p class="mt-stack-sm font-display-lg text-display-lg text-primary" data-test="admin-financial-active-count">
+                {{ $statusBreakdown['active'] ?? 0 }}
+            </p>
+            <p class="mt-stack-sm font-mono-sm text-mono-sm text-on-surface-variant">
+                {{ __('Total subscriptions: :count', ['count' => $this->totalSubscriptions()]) }}
+            </p>
+        </div>
+
+        <div class="glass-card p-stack-lg" data-test="admin-financial-status">
+            <p class="font-mono-sm text-mono-sm uppercase tracking-widest text-on-surface-variant">
+                {{ __('Status breakdown') }}
+            </p>
+            <ul class="mt-stack-sm flex flex-col gap-stack-xs text-sm">
+                @forelse ($statusBreakdown as $slug => $count)
+                    <li class="flex items-center justify-between gap-stack-sm">
+                        <span class="font-mono-sm text-mono-sm uppercase tracking-widest text-on-surface-variant">{{ $slug }}</span>
+                        <span class="font-mono-sm text-mono-sm font-semibold text-on-surface">{{ $count }}</span>
+                    </li>
+                @empty
+                    <li class="font-mono-sm text-mono-sm text-on-surface-variant">{{ __('No subscriptions yet.') }}</li>
+                @endforelse
+            </ul>
+        </div>
+    </section>
+
+    <section class="glass-card overflow-hidden bg-surface-container/40 border border-white/10 rounded-3xl shadow-2xl backdrop-blur-md" data-test="admin-financial-plans">
+        <div class="flex items-center justify-between border-b border-white/5 px-6 py-5">
             <div>
-                <h2 class="font-headline-md text-headline-md text-on-surface">
+                <h2 class="font-bold text-lg text-white">
+                    {{ __('Recurring revenue by plan') }}
+                </h2>
+                <p class="text-xs text-white/50 mt-0.5">
+                    {{ __('Active subscribers × plan price, normalized to monthly. Annual plans divide by 12.') }}
+                </p>
+            </div>
+        </div>
+
+        @if (count($plansRevenue) === 0)
+            <div class="p-stack-lg text-center" data-test="admin-financial-plans-empty">
+                <span class="material-symbols-outlined text-[36px] text-on-surface-variant" style="font-variation-settings: 'FILL' 0, 'wght' 400;">payments</span>
+                <p class="mt-stack-sm font-body-md text-body-md text-on-surface-variant">
+                    {{ __('No active subscriptions yet. As soon as the first one is created, the breakdown will appear here.') }}
+                </p>
+            </div>
+        @else
+            <table class="w-full text-left" data-test="admin-financial-plans-table">
+                <thead>
+                    <tr>
+                        <th class="px-6 py-4 text-left text-xs font-semibold uppercase tracking-wider text-white/50 border-b border-white/5">
+                            {{ __('Plan') }}
+                        </th>
+                        <th class="px-6 py-4 text-left text-xs font-semibold uppercase tracking-wider text-white/50 border-b border-white/5">
+                            {{ __('Interval') }}
+                        </th>
+                        <th class="px-6 py-4 text-right text-xs font-semibold uppercase tracking-wider text-white/50 border-b border-white/5">
+                            {{ __('Active subscribers') }}
+                        </th>
+                        <th class="px-6 py-4 text-right text-xs font-semibold uppercase tracking-wider text-white/50 border-b border-white/5">
+                            {{ __('Monthly revenue') }}
+                        </th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach ($plansRevenue as $row)
+                        <tr class="border-b border-white/5 hover:bg-white/[0.02] transition-colors" data-test="admin-financial-plan-row-{{ $row->plan->slug }}">
+                            <td class="px-6 py-4 font-medium text-sm text-white">
+                                {{ $row->plan->name }}
+                            </td>
+                            <td class="px-6 py-4 text-xs text-white/50">
+                                {{ $row->plan->interval?->name ?? '—' }}
+                            </td>
+                            <td class="px-6 py-4 text-right text-sm font-semibold text-white">
+                                {{ $row->active_count }}
+                            </td>
+                            <td class="px-6 py-4 text-right text-sm font-bold text-primary">
+                                {{ 'R$ ' . number_format($row->monthly_revenue_cents / 100, 2, ',', '.') }}
+                            </td>
+                        </tr>
+                    @endforeach
+                    <tr class="bg-white/[0.015]" data-test="admin-financial-plans-total">
+                        <td colspan="3" class="px-6 py-4 text-right text-xs font-semibold uppercase tracking-wider text-white/40">
+                            {{ __('Total MRR') }}
+                        </td>
+                        <td class="px-6 py-4 text-right text-sm font-bold text-primary">
+                            {{ $mrr }}
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        @endif
+    </section>
+
+    {{-- Audit log preview --}}
+    <section class="glass-card overflow-hidden bg-surface-container/40 border border-white/10 rounded-3xl shadow-2xl backdrop-blur-md" data-test="admin-audit-log">
+        <div class="flex items-center justify-between border-b border-white/5 px-6 py-5">
+            <div>
+                <h2 class="font-bold text-lg text-white">
                     {{ __('Recent admin actions') }}
                 </h2>
-                <p class="font-mono-sm text-mono-sm text-on-surface-variant">
+                <p class="text-xs text-white/50 mt-0.5">
                     {{ __('Last 20 audit log entries') }}
                 </p>
             </div>
@@ -76,36 +193,42 @@
             </div>
         @else
             <table class="w-full text-left" data-test="admin-audit-table">
-                <thead class="border-b border-outline-variant bg-surface-container-low">
+                <thead>
                     <tr>
-                        <th class="px-stack-md py-stack-md font-mono-sm text-mono-sm uppercase tracking-widest text-on-surface-variant">
+                        <th class="px-6 py-4 text-left text-xs font-semibold uppercase tracking-wider text-white/50 border-b border-white/5">
                             {{ __('When') }}
                         </th>
-                        <th class="px-stack-md py-stack-md font-mono-sm text-mono-sm uppercase tracking-widest text-on-surface-variant">
+                        <th class="px-6 py-4 text-left text-xs font-semibold uppercase tracking-wider text-white/50 border-b border-white/5">
                             {{ __('Actor') }}
                         </th>
-                        <th class="px-stack-md py-stack-md font-mono-sm text-mono-sm uppercase tracking-widest text-on-surface-variant">
+                        <th class="px-6 py-4 text-left text-xs font-semibold uppercase tracking-wider text-white/50 border-b border-white/5">
                             {{ __('Action') }}
                         </th>
-                        <th class="px-stack-md py-stack-md font-mono-sm text-mono-sm uppercase tracking-widest text-on-surface-variant">
+                        <th class="px-6 py-4 text-left text-xs font-semibold uppercase tracking-wider text-white/50 border-b border-white/5">
                             {{ __('Target') }}
                         </th>
                     </tr>
                 </thead>
                 <tbody>
                     @foreach ($logs as $log)
-                        <tr class="border-b border-outline-variant/30 last:border-b-0 hover:bg-surface-container-high" data-test="admin-audit-row">
-                            <td class="px-stack-md py-stack-md font-mono-sm text-mono-sm text-on-surface-variant">
+                        <tr class="border-b border-white/5 last:border-b-0 hover:bg-white/[0.02] transition-colors" data-test="admin-audit-row">
+                            <td class="px-6 py-4 text-xs text-white/50 whitespace-nowrap">
                                 {{ $log['created_at'] }}
                             </td>
-                            <td class="px-stack-md py-stack-md font-label-md text-label-md text-on-surface">
+                            <td class="px-6 py-4 font-medium text-sm text-white">
                                 {{ $log['actor'] ?? '—' }}
                             </td>
-                            <td class="px-stack-md py-stack-md font-label-md text-label-md text-primary">
+                            <td class="px-6 py-4 text-sm font-semibold text-primary">
                                 {{ $log['action'] }}
                             </td>
-                            <td class="px-stack-md py-stack-md font-mono-sm text-mono-sm text-on-surface-variant">
-                                {{ $log['target'] }}
+                            <td class="px-6 py-4 text-xs text-white/60">
+                                @if (! empty($log['target_href']))
+                                    <flux:link :href="$log['target_href']" wire:navigate>
+                                        {{ $log['target_label'] }}
+                                    </flux:link>
+                                @else
+                                    {{ $log['target_label'] }}
+                                @endif
                             </td>
                         </tr>
                     @endforeach

@@ -7,6 +7,7 @@ use App\Models\SourceImage;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
+use Illuminate\Validation\ValidationException;
 use Livewire\Component;
 use Livewire\Features\SupportFileUploads\TemporaryUploadedFile;
 use Livewire\Features\SupportFileUploads\WithFileUploads;
@@ -21,9 +22,14 @@ class BlockPhotos extends Component
 
     public ?int $slotCount = null;
 
-    public ?string $photo0 = null;
-
-    public ?string $photo1 = null;
+    /**
+     * Uploaded files held in Livewire's temporary storage until the user
+     * clicks "Generate". Once persisted, the matching slot stores the
+     * `SourceImage` id instead of a TemporaryUploadedFile.
+     *
+     * @var array<int, TemporaryUploadedFile|int|null> slot index => temp file or source_image_id
+     */
+    public array $photoSlots = [];
 
     public function mount(?int $projectId = null, ?string $subjectType = null): void
     {
@@ -39,67 +45,102 @@ class BlockPhotos extends Component
         $this->slotCount = in_array($value, ['casal', 'familia'], true) ? 2 : 1;
     }
 
-    public function updatedPhoto0(): void
+    public function updatedPhotoSlots(): void
     {
-        $this->upload(0);
-    }
+        // Triggered whenever any slot receives a file. Walk the slots,
+        // validate each, and surface inline errors.
+        foreach ($this->photoSlots as $slot => $value) {
+            if (! $value instanceof TemporaryUploadedFile) {
+                continue;
+            }
 
-    public function updatedPhoto1(): void
-    {
-        $this->upload(1);
-    }
+            $this->resetValidation("photoSlots.{$slot}");
 
-    public function upload(int $slot): void
-    {
-        $project = $this->authorizeUpdateOrAbort();
+            try {
+                $this->validateOnly(
+                    "photoSlots.{$slot}",
+                    ['photoSlots.'.$slot => ['required', 'file', 'mimes:jpeg,png,webp', 'max:10240']],
+                    [],
+                    ['photoSlots.'.$slot => __('photo')],
+                );
+            } catch (ValidationException $e) {
+                $this->reset("photoSlots.{$slot}");
 
-        $property = $slot === 0 ? 'photo0' : 'photo1';
-        $file = $this->{$property};
-
-        if (! $file instanceof TemporaryUploadedFile) {
-            return;
+                throw $e;
+            }
         }
-
-        $this->validate([
-            $property => ['required', 'file', 'mimes:jpeg,png,webp', 'max:10240'],
-        ], [], [$property => __('photo')]);
-
-        $user = Auth::user();
-        if ($user === null) {
-            abort(401);
-        }
-
-        $disk = config('filesystems.default');
-        $extension = strtolower($file->getClientOriginalExtension() ?: 'jpg');
-        $key = sprintf('source-images/%d/%s.%s', $user->id, (string) Str::uuid(), $extension);
-        Storage::disk($disk)->putFileAs(dirname($key), $file->getRealPath(), basename($key));
-
-        $sourceImage = SourceImage::create([
-            'user_id' => $user->id,
-            'disk' => $disk,
-            'path' => $key,
-            'original_filename' => $file->getClientOriginalName(),
-            'mime_type' => $file->getMimeType() ?? 'image/jpeg',
-            'size_bytes' => $file->getSize(),
-        ]);
-
-        $project->photos()->updateOrCreate(
-            ['position' => $slot],
-            ['source_image_id' => $sourceImage->id],
-        );
-
-        $this->reset($property);
-        $this->refreshPreviews();
     }
 
     public function removePhoto(int $slot): void
     {
+        // Unset the slot so the dropzone returns to its empty state.
+        unset($this->photoSlots[$slot]);
+
+        // If the photo had already been persisted to S3 (e.g. user clicks
+        // Generate, then comes back to remove), also delete the SourceImage.
+        if ($this->projectId !== null) {
+            $project = Project::find($this->projectId);
+
+            if ($project !== null) {
+                $photo = $project->photos()->where('position', $slot)->first();
+
+                if ($photo !== null) {
+                    $photo->sourceImage?->delete();
+                    $photo->delete();
+                }
+            }
+        }
+
+        $this->refreshPreviews();
+    }
+
+    /**
+     * Persist every pending temp upload into S3 and link it to the project.
+     * Called by the parent Configurator right before SubmitGeneration runs.
+     */
+    public function persistPendingPhotos(): void
+    {
+        if ($this->projectId === null) {
+            return;
+        }
+
         $project = $this->authorizeUpdateOrAbort();
 
-        $photo = $project->photos()->where('position', $slot)->first();
+        $user = Auth::user();
 
-        if ($photo !== null) {
-            $photo->delete();
+        if ($user === null) {
+            abort(401);
+        }
+
+        $disk = (string) config('generation.disk', config('filesystems.default'));
+
+        foreach ($this->photoSlots as $slot => $value) {
+            if (! $value instanceof TemporaryUploadedFile) {
+                continue;
+            }
+
+            $extension = strtolower($value->getClientOriginalExtension() ?: 'jpg');
+            $key = sprintf('source-images/%d/%s.%s', $user->id, (string) Str::uuid(), $extension);
+
+            Storage::disk($disk)->putFileAs(dirname($key), $value->getRealPath(), basename($key));
+
+            $sourceImage = SourceImage::create([
+                'user_id' => $user->id,
+                'disk' => $disk,
+                'path' => $key,
+                'original_filename' => $value->getClientOriginalName(),
+                'mime_type' => $value->getMimeType() ?? 'image/jpeg',
+                'size_bytes' => $value->getSize(),
+            ]);
+
+            $project->photos()->updateOrCreate(
+                ['position' => $slot],
+                ['source_image_id' => $sourceImage->id],
+            );
+
+            // Replace the temp file with the persisted id so refreshPreviews
+            // can resolve the URL from S3 instead of the temp disk.
+            $this->photoSlots[$slot] = $sourceImage->id;
         }
 
         $this->refreshPreviews();
@@ -110,26 +151,59 @@ class BlockPhotos extends Component
         return view('livewire.projects.configurator.block-photos');
     }
 
-    private function refreshPreviews(): void
+    /**
+     * @return array<int, string|null> slot index => preview URL
+     */
+    public function getPreviewUrls(): array
     {
-        $this->photo0 = null;
-        $this->photo1 = null;
+        $urls = [];
 
         if ($this->projectId === null) {
-            return;
+            return $urls;
         }
 
         $project = Project::find($this->projectId);
 
         if ($project === null) {
-            return;
+            return $urls;
         }
 
-        foreach ($project->photos()->with('sourceImage')->get() as $photo) {
-            $previewUrl = Storage::disk($photo->sourceImage->disk)->url($photo->sourceImage->path);
-            $property = $photo->position === 0 ? 'photo0' : 'photo1';
-            $this->{$property} = $previewUrl;
+        $persisted = $project->photos()->with('sourceImage')->get()->keyBy('position');
+
+        foreach (range(0, max(1, $this->slotCount ?? 1) - 1) as $slot) {
+            // Prefer a freshly-uploaded temp file for instant preview
+            if (isset($this->photoSlots[$slot]) && $this->photoSlots[$slot] instanceof TemporaryUploadedFile) {
+                try {
+                    $urls[$slot] = $this->photoSlots[$slot]->temporaryUrl();
+
+                    continue;
+                } catch (\Throwable $e) {
+                    $urls[$slot] = null;
+
+                    continue;
+                }
+            }
+
+            // Fall back to the persisted S3 URL once the user has clicked Generate
+            if (isset($persisted[$slot])) {
+                $photo = $persisted[$slot];
+                $urls[$slot] = $photo->sourceImage
+                    ? Storage::disk($photo->sourceImage->disk)->url($photo->sourceImage->path)
+                    : null;
+
+                continue;
+            }
+
+            $urls[$slot] = null;
         }
+
+        return $urls;
+    }
+
+    public function refreshPreviews(): void
+    {
+        // Kept for backward compatibility with existing templates — the
+        // actual preview rendering now goes through getPreviewUrls().
     }
 
     private function authorizeUpdateOrAbort(): Project

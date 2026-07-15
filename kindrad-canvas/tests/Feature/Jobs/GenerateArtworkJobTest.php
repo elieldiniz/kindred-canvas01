@@ -10,6 +10,8 @@ use App\Models\Layout;
 use App\Models\Product;
 use App\Models\Project;
 use App\Models\ProjectMode;
+use App\Models\ProjectPhoto;
+use App\Models\SourceImage;
 use App\Models\Style;
 use App\Models\User;
 use App\Services\CreditLedger;
@@ -181,4 +183,59 @@ test('marks project first generated at on completion', function (): void {
 
     $project->refresh();
     expect($project->first_generated_at)->not->toBeNull();
+});
+
+test('passes the first project photo as source image to the provider', function (): void {
+    $user = User::factory()->create();
+    $generation = buildGenerationRow($user, 5);
+
+    $sourceImage = SourceImage::factory()->create([
+        'user_id' => $user->id,
+        'path' => 'source-images/cover.jpg',
+        'disk' => 's3',
+    ]);
+    ProjectPhoto::create([
+        'project_id' => $generation->project_id,
+        'source_image_id' => $sourceImage->id,
+        'position' => 0,
+    ]);
+
+    Http::fake([
+        'api.openai.com/*' => Http::response([
+            'created' => 1,
+            'data' => [[
+                'b64_json' => base64_encode('fake-image-bytes'),
+                'mime_type' => 'image/png',
+            ]],
+        ], 200),
+    ]);
+
+    (new GenerateArtworkJob($generation->id, 'openai'))->handle(
+        app(ProviderRegistry::class),
+        app(CreditLedger::class),
+    );
+
+    expect($generation->fresh()->status_id)->toBe(GenerationStatus::where('slug', 'completed')->value('id'));
+});
+
+test('handles projects with no photos by passing null to provider', function (): void {
+    $user = User::factory()->create();
+    $generation = buildGenerationRow($user, 5);
+
+    Http::fake([
+        'api.openai.com/*' => Http::response([
+            'created' => 1,
+            'data' => [[
+                'b64_json' => base64_encode('fake-image-bytes'),
+                'mime_type' => 'image/png',
+            ]],
+        ], 200),
+    ]);
+
+    (new GenerateArtworkJob($generation->id, 'openai'))->handle(
+        app(ProviderRegistry::class),
+        app(CreditLedger::class),
+    );
+
+    expect($generation->fresh()->status_id)->toBe(GenerationStatus::where('slug', 'completed')->value('id'));
 });

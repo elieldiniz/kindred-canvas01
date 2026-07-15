@@ -1,12 +1,12 @@
 # Kindred Canvas — Database Schema
 
-<!-- inputs: project-description.md@sha256:4fb8c4284951 user-stories.md@sha256:880bd7ad3732 -->
+<!-- inputs: project-description.md@sha256:891934ac4985 user-stories.md@sha256:649171448264 -->
 
 ## Overview
 
-The data model centers on three pillars: **identity & credits** (users, oauth_accounts, credit_transactions ledger), **the personalization catalog** (products, categories, styles, layouts, prompt_templates — all admin-managed, lookup-table-driven), and **the project lifecycle** (projects → generations → generation_artifacts). Soft deletes are applied only to `projects`; everything else uses status flags so historical data stays intact for audit and analytics. The credit system is ledger-first: `users.credit_balance` is a denormalized cache that is always kept in sync inside the same DB transaction that writes a `credit_transactions` row. AI generation is abstracted through a `generation_provider_id` lookup so swapping OpenAI/Gemini/Replicate is a config change, not a schema change.
+The data model centers on four pillars: **identity & credits** (users, oauth_accounts, credit_transactions ledger — extended with Cashier's billable trait via `users.stripe_id`), **the personalization catalog** (products, categories, styles, layouts, prompt_templates — all admin-managed, lookup-table-driven), **the project lifecycle** (projects → generations → source_images → project_photos), and **recurring billing** (subscription_plans → users_subscriptions, mirrored from Stripe via Laravel Cashier + a `stripe_events` idempotency table for webhook replay safety). Soft deletes are applied only to `projects`; everything else uses status/active flags so historical data stays intact for audit and analytics. The credit system is ledger-first: `users.credit_balance` is a denormalized cache always kept in sync inside the same DB transaction that writes a `credit_transactions` row. AI generation is abstracted through a `generation_provider_id` lookup so swapping OpenAI/Gemini/Replicate is a config change, not a schema change.
 
-All table names are plural snake_case. All tables have `id bigint [pk, increment]`, `created_at timestamp`, `updated_at timestamp`. No DB-level enums — every status/type/reason is a lookup table joined by `*_id`.
+All table names are plural snake_case. Every table has `id bigint [pk, increment]`, `created_at timestamp`, `updated_at timestamp`. No DB-level enums — every status/type/reason is a lookup table joined by `*_id`. MVP currency is BRL (only). Bounded `interval` for subscriptions is `month | year`.
 
 ## Schema (DBML)
 
@@ -92,8 +92,8 @@ Table color_modes {
 
 Table credit_transaction_reasons {
   id bigint [pk, increment]
-  name varchar [not null]              // "Signup Grant", "Generation Debit", "Generation Refund", "Admin Grant"
-  slug varchar [unique, not null]      // "signup_grant", "generation_debit", "generation_refund", "admin_grant"
+  name varchar [not null]              // "Signup Grant", "Generation Debit", "Generation Refund", "Admin Grant", "Subscription Credit Grant"
+  slug varchar [unique, not null]      // "signup_grant", "generation_debit", "generation_refund", "admin_grant", "subscription_credit_grant"
   expected_sign varchar [not null]     // "+", "-" — used by reconciliation
   created_at timestamp
   updated_at timestamp
@@ -101,14 +101,30 @@ Table credit_transaction_reasons {
 
 Table audit_log_actions {
   id bigint [pk, increment]
-  name varchar [not null]              // "Toggle Admin", "Grant Credits", "Edit Product", "Edit Category", "Edit Style", "Edit Layout", "Edit Prompt Template"
-  slug varchar [unique, not null]      // "toggle_admin", "grant_credits", "edit_product", "edit_category", "edit_style", "edit_layout", "edit_prompt_template"
+  name varchar [not null]              // "Toggle Admin", "Grant Credits", "Edit Product", "Edit Category", "Edit Style", "Edit Layout", "Edit Prompt Template", "Edit Plan"
+  slug varchar [unique, not null]      // "toggle_admin", "grant_credits", "edit_product", "edit_category", "edit_style", "edit_layout", "edit_prompt_template", "edit_plan"
+  created_at timestamp
+  updated_at timestamp
+}
+
+Table subscription_intervals {
+  id bigint [pk, increment]
+  name varchar [not null]              // "Monthly", "Yearly"
+  slug varchar [unique, not null]      // "month", "year" — must match Stripe interval values
+  created_at timestamp
+  updated_at timestamp
+}
+
+Table subscription_statuses {
+  id bigint [pk, increment]
+  name varchar [not null]              // "Active", "Trialing", "Past Due", "Canceled", "Incomplete", "Incomplete Expired", "Unpaid", "Paused"
+  slug varchar [unique, not null]      // mirrors Stripe's subscription.status keys
   created_at timestamp
   updated_at timestamp
 }
 
 // =====================================================
-// 2. Identity & credits
+// 2. Identity & credits (Cashier adds users.stripe_id, etc.)
 // =====================================================
 
 Table users {
@@ -120,11 +136,16 @@ Table users {
   google_id varchar [unique, null]     // Convenience FK; canonical link in oauth_accounts
   is_admin boolean [not null, default: false]
   credit_balance int [not null, default: 0]   // denormalized cache; source of truth = credit_transactions
+  // --- Cashier billable fields (added via Laravel cashier migrations) ---
+  stripe_id varchar [unique, null]     // users.stripe_id — Stripe customer identifier
+  pm_type varchar [null]               // Cashier default payment method type
+  pm_last_four varchar [null]          // last 4 digits of the saved card
+  trial_ends_at timestamp [null]       // Cashier trial support
   remember_token varchar [null]
   created_at timestamp
   updated_at timestamp
 
-  Note 'Laravel Fortify also creates password_reset_tokens and sessions tables (not modeled here — managed by the framework).'
+  Note 'Laravel Fortify also creates password_reset_tokens and sessions tables (not modeled here — managed by the framework). Cashier adds stripe-related columns and a payment_methods table.'
 }
 
 Table oauth_accounts {
@@ -150,9 +171,9 @@ Table credit_transactions {
   reason_id bigint [not null, ref: > credit_transaction_reasons.id]
   delta int [not null]                 // signed: negative = debit, positive = credit
   balance_after int [not null]         // snapshot of users.credit_balance after this row
-  reference_type varchar [null]        // polymorphic: "App\\Models\\Generation", "App\\Models\\User"
+  reference_type varchar [null]        // polymorphic: "App\\Models\\Generation", "App\\Models\\User", "App\\Models\\Subscription"
   reference_id bigint [null]
-  notes text [null]                    // free-text reason (used for admin_grant)
+  notes text [null]                    // free-text reason (used for admin_grant) or period hint (used for subscription_credit_grant)
   created_at timestamp
   updated_at timestamp
 
@@ -291,7 +312,6 @@ Table projects {
   status_id bigint [not null, ref: > project_statuses.id]
   title varchar [null]                  // user-given or auto-generated
   inputs json [not null, default: `{}`] // { "name": ..., "phrase": ..., "theme": ..., "dedicatoria": ... }
-  source_image_id bigint [null, ref: > source_images.id]   // 0..1 source image
   first_generated_at timestamp [null]   // set on first successful generation; mode becomes immutable
   created_at timestamp
   updated_at timestamp
@@ -303,22 +323,46 @@ Table projects {
   }
 }
 
-Table source_images {
+// New: a project may attach N photos via this pivot (replaces legacy source_image_id).
+Table project_photos {
   id bigint [pk, increment]
+  project_id bigint [not null, ref: > projects.id]
   user_id bigint [not null, ref: > users.id]
   disk varchar [not null, default: 's3']
-  path varchar [not null]               // S3 key
+  path varchar [not null]                // S3 key
   original_filename varchar [not null]
-  mime_type varchar [not null]          // image/jpeg | image/png | image/webp
+  mime_type varchar [not null]           // image/jpeg | image/png | image/webp
   size_bytes bigint [not null]
   width_px int [null]
   height_px int [null]
+  position int [not null, default: 0]    // ordering for multi-photo projects
+  pose_id bigint [null, ref: > poses.id] // 0..1 pose hint per photo (couple/family projects)
   created_at timestamp
   updated_at timestamp
 
   Indexes {
-    (user_id, created_at) [name: 'source_images_user_created_idx']
+    (project_id, position) [name: 'project_photos_project_position_idx']
+    (user_id, created_at) [name: 'project_photos_user_created_idx']
   }
+}
+
+Table poses {
+  id bigint [pk, increment]
+  name varchar [not null]                // "Abraçados", "Beijo", "Sentados", ...
+  slug varchar [unique, not null]
+  status_id bigint [not null, ref: > pose_statuses.id]
+  sort_order int [not null, default: 0]
+  thumbnail_path varchar [null]
+  created_at timestamp
+  updated_at timestamp
+}
+
+Table pose_statuses {
+  id bigint [pk, increment]
+  name varchar [not null]
+  slug varchar [unique, not null]
+  created_at timestamp
+  updated_at timestamp
 }
 
 Table generations {
@@ -329,7 +373,7 @@ Table generations {
   provider_id bigint [null, ref: > generation_providers.id]    // resolved at submit time
   prompt_snapshot text [not null]                             // exact prompt sent to provider (audit)
   constraints_snapshot json [not null]                        // print specs + safe area at the time
-  idempotency_key varchar [unique, not null]                  // US-8.2 — guards double-charge
+  idempotency_key varchar [unique, not null]                  // US-11.2 — guards double-charge
   result_path varchar [null]                                  // S3 key on completion
   result_mime_type varchar [null]
   result_width_px int [null]
@@ -368,8 +412,72 @@ Table audit_logs {
 }
 
 // =====================================================
-// 6. Laravel infrastructure tables (not modeled here,
-//    created automatically by Fortify/Sanctum/queue/breeze)
+// 6. Recurring billing (Laravel Cashier + Stripe)
+// =====================================================
+
+Table subscription_plans {
+  id bigint [pk, increment]
+  name varchar [not null]               // "Starter", "Pro", "Business"
+  description text [null]               // short copy shown on /billing/plans
+  slug varchar [unique, not null]       // "starter", "pro", "business"
+  credits_per_period int [not null]      // 50, 200, 1000, ...
+  price_cents int [not null]            // 1990 = R$19,90
+  currency char(3) [not null, default: 'BRL']
+  interval_id bigint [not null, ref: > subscription_intervals.id]
+  is_active boolean [not null, default: true]
+  sort_order int [not null, default: 0] // display order on /billing/plans
+  // Stripe-synced fields (populated by EnsureStripePriceAction on first save)
+  stripe_product_id varchar [null]
+  stripe_price_id varchar [unique, null]
+  created_at timestamp
+  updated_at timestamp
+
+  Indexes {
+    (is_active, sort_order) [name: 'subscription_plans_active_sort_idx']
+    (slug) [unique, name: 'subscription_plans_slug_unique']
+  }
+}
+
+Table subscriptions {
+  id bigint [pk, increment]
+  user_id bigint [not null, ref: > users.id]
+  subscription_plan_id bigint [not null, ref: > subscription_plans.id] // current plan
+  type varchar [not null, default: 'default']               // Cashier's `type` discriminator
+  stripe_id varchar [unique, not null]                        // Cashier's `stripe_id` — Stripe Subscription id
+  stripe_status varchar [not null]                            // mirrors Stripe's `subscription.status` verbatim
+  current_period_start timestamp [null]
+  current_period_end timestamp [null]
+  ends_at timestamp [null]                                    // set when cancel_at_period_end takes effect
+  cancel_at_period_end boolean [not null, default: false]
+  pending_plan_id bigint [null, ref: > subscription_plans.id] // scheduled downgrade (US-9.6)
+  created_at timestamp
+  updated_at timestamp
+
+  Indexes {
+    (user_id, stripe_status) [name: 'subscriptions_user_status_idx']
+    (subscription_plan_id) [name: 'subscriptions_plan_idx']
+    (stripe_id) [unique, name: 'subscriptions_stripe_id_unique']
+  }
+}
+
+// Stripe webhook idempotency: every verified event lands here keyed by Stripe `event.id`.
+Table stripe_events {
+  id bigint [pk, increment]
+  stripe_event_id varchar [unique, not null]  // == Stripe `event.id`, e.g., "evt_..."
+  type varchar [not null]                     // == Stripe `event.type`, e.g., "invoice.payment_succeeded"
+  payload json [not null]                     // the entire verified payload, kept for audit
+  processed_at timestamp [null]               // null while enqueued / processing; set after successful handler run
+  created_at timestamp
+  updated_at timestamp
+
+  Indexes {
+    (type, created_at) [name: 'stripe_events_type_created_idx']
+  }
+}
+
+// =====================================================
+// 7. Laravel infrastructure tables (not modeled here,
+//    created automatically by Fortify/Cashier/queue/framework)
 // =====================================================
 // - password_reset_tokens
 // - sessions
@@ -378,24 +486,34 @@ Table audit_logs {
 // - failed_jobs
 // - cache
 // - cache_locks
+// - cashier subscriptions_items (Cashier internal)
+// - cashier webhook_calls     OR stripe_events (we mirror this manually on top)
 ```
 
 ## Relationships
 
 - **users ↔ oauth_accounts** — one-to-many. A user may have multiple OAuth identities (Google now, more providers later). Each oauth_account links to one provider and stores the provider's `user_id` + tokens.
-- **users ↔ credit_transactions** — one-to-many. Every credit movement is appended as a ledger row referencing the user. `balance_after` snapshots the running balance.
-- **credit_transaction_reasons ↔ credit_transactions** — one-to-many. Each ledger row is tagged with its reason (signup_grant, generation_debit, generation_refund, admin_grant, future: topup_purchase).
+- **users ↔ credit_transactions** — one-to-many. Every credit movement is appended as a ledger row referencing the user. `balance_after` snapshots the running balance. Subscription-driven grants reference `App\\Models\\Subscription` polymorphically.
+- **credit_transaction_reasons ↔ credit_transactions** — one-to-many. Each ledger row is tagged with its reason (`signup_grant`, `generation_debit`, `generation_refund`, `admin_grant`, `subscription_credit_grant`).
 - **products ↔ categories** — one-to-many. Each category belongs to one product (slug is unique per product).
 - **products ↔ color_modes** — many-to-one. Print color profile is product-level.
 - **categories ↔ styles (via category_styles)** — many-to-many. A category offers a curated set of styles; a style may be reused across categories.
 - **styles ↔ layouts (via style_layouts)** — many-to-many. A layout may be valid for multiple styles.
+- **styles/layouts ↔ poses (via project_photos.pose_id)** — many-to-one per photo. A photo may carry a pose hint (`Abraçados`, `Beijo`, etc.) for couple/family projects.
 - **products ↔ prompt_templates (with category/style/layout)** — composite FK (4-tuple unique). Exactly one template per Product/Category/Style/Layout combo.
 - **users ↔ projects** — one-to-many. A user owns projects; soft-deleted projects are filtered via `deleted_at IS NULL`.
-- **projects ↔ source_images** — one-to-one (nullable). A project has 0 or 1 source image; source image is uploaded once and can be replaced.
+- **projects ↔ project_photos** — one-to-many. A project can have multiple photos (`position` orders them). The legacy `source_image_id` column was dropped in favor of this pivot.
+- **project_photos ↔ poses** — many-to-one optional. Poses are admin-curated cues for AI generation in couple/family projects.
 - **projects ↔ generations** — one-to-many. Each generation belongs to one project; re-runs create new generations (immutability).
 - **generations ↔ generation_providers** — many-to-one. Provider is resolved at submit time and snapshotted on the generation row.
 - **generations ↔ generation_statuses** — many-to-one. Status flows `waiting → processing → completed | failed`.
 - **users ↔ audit_logs (as actor)** — one-to-many. Every admin action is recorded with the acting admin and a polymorphic target.
+- **subscription_plans ↔ subscription_intervals** — many-to-one. Each plan declares its billing interval (`month` or `year`).
+- **subscription_plans ↔ subscriptions** — one-to-many. A plan may have many subscribers at any given moment.
+- **subscriptions ↔ subscription_plans (current vs pending)** — two FKs: `subscription_plan_id` is the **current** plan; `pending_plan_id` is a scheduled downgrade target (US-9.6).
+- **users ↔ subscriptions** — one-to-many. A user may, in lifetime, have only one active subscription at a time, but the table is shaped as one-to-many to keep past-canceled history (audit, downgrade mechanics).
+- **stripe_events ↔ subscriptions / users / subscription_plans** — implicit, via the stored `payload` JSON. The app re-parses the payload inside the webhook handler to update the right rows.
+- **subscriptions (via Cashier) ↔ users.stripe_id** — Cashier writes the `stripe_id` on `users` at first subscription; the column is the canonical link between a user and a Stripe Customer.
 
 ## Lookup Table Seeds
 
@@ -418,7 +536,7 @@ Table audit_logs {
 - `active`, `Active`
 - `inactive`, `Inactive`
 
-**category_statuses / style_statuses / layout_statuses** (`slug`, `name`):
+**category_statuses / style_statuses / layout_statuses / pose_statuses** (`slug`, `name`):
 - `active`, `Active`
 - `inactive`, `Inactive`
 
@@ -438,6 +556,7 @@ Table audit_logs {
 - `generation_debit`, `Generation Debit`, `-`
 - `generation_refund`, `Generation Refund`, `+`
 - `admin_grant`, `Admin Grant`, `+`
+- `subscription_credit_grant`, `Subscription Credit Grant`, `+`
 
 **audit_log_actions** (`slug`, `name`):
 - `toggle_admin`, `Toggle Admin`
@@ -447,6 +566,23 @@ Table audit_logs {
 - `edit_style`, `Edit Style`
 - `edit_layout`, `Edit Layout`
 - `edit_prompt_template`, `Edit Prompt Template`
+- `edit_plan`, `Edit Plan`
+
+**subscription_intervals** (`slug`, `name`):
+- `month`, `Monthly`
+- `year`, `Yearly`
+
+**subscription_statuses** (`slug`, `name`) — mirrors Stripe's `subscription.status` enumeration:
+- `active`, `Active`
+- `trialing`, `Trialing`
+- `past_due`, `Past Due`
+- `canceled`, `Canceled`
+- `incomplete`, `Incomplete`
+- `incomplete_expired`, `Incomplete Expired`
+- `unpaid`, `Unpaid`
+- `paused`, `Paused`
+
+The canonical Stripe status string is stored verbatim on `subscriptions.stripe_status`; the lookup table is used by the admin UI as a friendly label.
 
 **products (MVP seed)**:
 - `mug`, `Mug`, active, 220×95 mm print area, 300 DPI, 5 mm safe area, RGB
@@ -457,23 +593,43 @@ Table audit_logs {
 
 **layouts (MVP seed)**: `centered`, `border_wrap`, `full_bleed`, `split_top_bottom` — all active.
 
+**poses (MVP seed)**: `abracados`, `beijo`, `sentados`, `caminhando`, `natal`, `praia`, `sofa`, `flores`.
+
 **category_styles / style_layouts / prompt_templates**: seeded by an admin (or by the initial seeder) for every valid 4-tuple; placeholder `body` text ships with `{{name}}`, `{{phrase}}`, `{{theme}}`, `{{image_tags}}`, `{{print_specs}}` placeholders.
+
+**subscription_plans (MVP seed, USD-equivalent examples, BRL-only in MVP)**:
+- `starter`, `Starter`, 50cr, 1990¢, `BRL`, `month`, active, sort_order=10
+- `pro`, `Pro`, 200cr, 5990¢, `BRL`, `month`, active, sort_order=20
+- `business`, `Business`, 1000cr, 19990¢, `BRL`, `month`, active, sort_order=30
+- `pro_yearly`, `Pro Anual`, 2400cr, 59900¢, `BRL`, `year`, active, sort_order=25
+
+(Seeded inactive plans — sort_order is preserved so re-activating them doesn't change their position.)
 
 ## Notes & Conventions
 
-- **No DB-level enums.** All status/type/reason fields reference a lookup table (`generation_statuses`, `project_modes`, `credit_transaction_reasons`, etc.) so admins can add values without a migration. Enums in PHP code mirror the lookup tables but the DB stays flexible.
-- **Soft deletes apply only to `projects`** (30-day recovery window per US-5.3). `users` does NOT soft-delete — credit FKs and OAuth identity integrity must survive. Deactivation is via the `is_admin` flag and a future `is_active` column when added.
-- **Polymorphic references** (`credit_transactions.reference_*`, `audit_logs.target_*`) use the string `reference_type` / `target_type` matching Laravel's `MorphTo` convention (e.g., `App\\Models\\Generation`). This keeps the schema generic — new reference targets do not require schema changes.
-- **Idempotency** — `generations.idempotency_key` is `unique` and must be set BEFORE the credit debit transaction begins. The job handler checks for an existing ledger row referencing this generation with reason `generation_debit` before any write, satisfying US-8.2.
-- **Denormalization** — `users.credit_balance` is a cache of the credit_transactions ledger. Every write to the ledger updates `credit_balance` inside the same DB transaction. A scheduled reconciliation command can recompute from the ledger and surface drift to admins.
-- **Denormalization** — `generations.user_id` is duplicated from `projects.user_id` to keep credit-history queries (`SELECT * FROM credit_transactions WHERE user_id = ?`) and "my generations" listings fast. Both columns must agree.
+- **No DB-level enums.** All status/type/reason fields reference a lookup table (`generation_statuses`, `project_modes`, `credit_transaction_reasons`, `subscription_intervals`, `subscription_statuses`) so admins can add values without a migration. Enums in PHP code mirror the lookup tables but the DB stays flexible.
+- **Soft deletes apply only to `projects`** (30-day recovery window per US-5.3). `users` does NOT soft-delete — credit FKs and OAuth identity integrity must survive. Plan deactivation is a flag (`is_active = false`), not a delete; existing subscribers remain on the (now-invisible) plan per US-8.3 / SPEC §Q-04.
+- **Polymorphic references** (`credit_transactions.reference_*`, `audit_logs.target_*`) use the string `reference_type` / `target_type` matching Laravel's `MorphTo` convention (e.g., `App\\Models\\Generation`, `App\\Models\\Subscription`). This keeps the schema generic — new reference targets do not require schema changes.
+- **Idempotency — generations** — `generations.idempotency_key` is `unique` and must be set BEFORE the credit debit transaction begins. The job handler checks for an existing ledger row referencing this generation with reason `generation_debit` before any write, satisfying US-11.2.
+- **Idempotency — webhook grants** — the webhook handler writes subscription-driven grants with `reference_type = "App\\Models\\Subscription"`, `reference_id = subscriptions.id`, plus the period-end timestamp encoded in `notes`. A secondary uniqueness check `(subscription_id, current_period_end)` is enforced in the service layer, because Postgres/SQLite don't index on a JSON column deterministically. The combined effect is: Stripe may retry the same `invoice.payment_succeeded` event freely, but only one `credit_transactions` row is written per cycle per subscription.
+- **Idempotency — `stripe_events`** — every verified Stripe event is logged once via `stripe_events.stripe_event_id` (`unique`). On retry, the handler is a no-op. This complements the per-subscription ledger idempotency above.
+- **Cashier relationship** — Laravel Cashier stores its own model by default (`Laravel\\Cashier\\Subscription`). To keep application code aligned, the project's `App\\Models\\Subscription` Eloquent model can either `extends CashierSubscription` or transparently re-use Cashier's table. The naming collision should be resolved during implementation (US-10.x open question in SPEC); the schema stays correct either way.
+- **Denormalization — credit balance** — `users.credit_balance` is a cache of the credit_transactions ledger. Every write to the ledger updates `credit_balance` inside the same DB transaction (matches `CreditLedger::lockForUpdate()` pattern already in `app/Services/CreditLedger.php`). A scheduled reconciliation command can recompute from the ledger and surface drift to admins.
+- **Denormalization — generations.user_id** — duplicated from `projects.user_id` to keep credit-history queries (`SELECT * FROM credit_transactions WHERE user_id = ?`) and "my generations" listings fast. Both columns must agree.
 - **Snapshot fields** — `generations.prompt_snapshot`, `generations.constraints_snapshot`, and `prompt_templates.version` together provide a full audit trail: even if an admin edits a template after a generation completes, the exact prompt used for that generation is preserved on the row.
+- **Subscription `pending_plan_id`** — a single nullable FK. A scheduled downgrade is set on the source subscription by mutating `pending_plan_id`; Cashier does not natively expose this slot, so we maintain it as an app-level concern (a webhook reconciliation step maps Stripe's `pending_update` to this column at `customer.subscription.updated`). Cancelling a pending downgrade (US-9.6) clears the column.
+- **Stripe webhook `payload` storage** — the JSON blob on `stripe_events.payload` is the raw, verified bytes from Stripe. Replaying an old event re-runs the handler against the same payload, which is also how tests assert side-effect idempotency.
 - **Indexes** — composite indexes are named explicitly. The most-frequent query patterns are:
   - `users` by `email` (auth lookup) — `unique` index on email.
+  - `users` by `stripe_id` (Cashier lookup) — `unique` index.
   - `projects` for "my active projects" — `(user_id, deleted_at)`.
+  - `project_photos` for ordered display — `(project_id, position)`.
   - `generations` for project history — `(project_id, status_id)`.
   - `credit_transactions` for user history — `(user_id, created_at)`.
+  - `subscription_plans` for the public plans page — `(is_active, sort_order)`.
+  - `subscriptions` for the user's billing page and admin filter — `(user_id, stripe_status)` and `(subscription_plan_id)`.
+  - `stripe_events` for retries / debugging — `(type, created_at)`.
   - `audit_logs` for "who did what to whom" — `(target_type, target_id)` and `(actor_user_id, created_at)`.
-- **Laravel framework tables** — `password_reset_tokens`, `sessions`, `jobs`, `job_batches`, `failed_jobs`, `cache`, `cache_locks` are created by the framework and not modeled in DBML. They are listed at the bottom of the schema for awareness.
-- **Naming** — table names plural snake_case; foreign keys singular with `_id` suffix; pivots named `entity1_entity2` alphabetical; lookup tables named `entity_attribute_types` style (`generation_statuses`, `credit_transaction_reasons`).
+- **Laravel framework tables** — `password_reset_tokens`, `sessions`, `jobs`, `job_batches`, `failed_jobs`, `cache`, `cache_locks` are created by the framework; Cashier adds `subscriptions` (or co-exists with our `subscriptions`), `subscription_items`, `payment_methods`, `webhook_calls` (we mirror selected fields on our own `subscriptions` / `stripe_events` to keep app logic independent of Cashier internals). They are listed at the bottom of the schema for awareness.
+- **Naming** — table names plural snake_case; foreign keys singular with `_id` suffix; pivots named `entity1_entity2` alphabetical; lookup tables named `entity_attribute_types` style (`generation_statuses`, `credit_transaction_reasons`, `subscription_intervals`).
 - **Timestamps** — every domain table has `created_at` and `updated_at` (Laravel convention). Soft-delete tables add `deleted_at`. Lookup tables also get timestamps so admin edits are traceable.

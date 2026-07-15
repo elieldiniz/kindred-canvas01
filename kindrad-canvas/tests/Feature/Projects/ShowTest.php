@@ -148,3 +148,25 @@ test('non owner cannot delete', function (): void {
 
     Livewire::test(Show::class, ['project' => $project])->assertForbidden();
 });
+
+test('retry button appears on failed history rows', function (): void {
+    $user = User::factory()->create();
+    $project = showProject($user);
+    $failed = showGeneration($project, 'failed');
+
+    $this->actingAs($user);
+
+    Livewire::test(Show::class, ['project' => $project])
+        ->assertSee('data-test="history-retry-button-'.$failed->id.'"', false);
+});
+
+test('retry button does not appear on completed rows', function (): void {
+    $user = User::factory()->create();
+    $project = showProject($user);
+    $completed = showGeneration($project, 'completed');
+
+    $this->actingAs($user);
+
+    Livewire::test(Show::class, ['project' => $project])
+        ->assertDontSee('history-retry-button-'.$completed->id, false);
+});

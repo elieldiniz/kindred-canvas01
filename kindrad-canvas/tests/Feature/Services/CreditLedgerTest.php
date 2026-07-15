@@ -7,6 +7,7 @@ use App\Models\User;
 use App\Services\CreditLedger;
 use App\Services\Exceptions\CreditInsufficientException;
 use Database\Seeders\CatalogSeeder;
+use Illuminate\Support\Facades\DB;
 
 beforeEach(function (): void {
     $this->seed(CatalogSeeder::class);
@@ -118,4 +119,46 @@ test('debit on zero balance leaves no ledger row', function (): void {
 
     expect(CreditTransaction::where('user_id', $user->id)->count())->toBe(0);
     expect($user->fresh()->credit_balance)->toBe(0);
+});
+
+test('debit is idempotent for the same generation', function (): void {
+    $user = User::factory()->create(['credit_balance' => 5]);
+    $generation = Generation::factory()->for($user)->create();
+
+    $first = app(CreditLedger::class)->debit($user, 1, $generation);
+    $second = app(CreditLedger::class)->debit($user, 1, $generation);
+
+    expect($second->id)->toBe($first->id);
+    expect($user->fresh()->credit_balance)->toBe(4);
+    expect(CreditTransaction::where('reference_type', Generation::class)
+        ->where('reference_id', $generation->id)
+        ->where('reason_id', CreditTransactionReason::where('slug', 'generation_debit')->value('id'))
+        ->count())->toBe(1);
+});
+
+test('debit does not double-charge when job retries after refund', function (): void {
+    $user = User::factory()->create(['credit_balance' => 5]);
+    $generation = Generation::factory()->for($user)->create();
+
+    $first = app(CreditLedger::class)->debit($user, 1, $generation);
+    app(CreditLedger::class)->refund($generation, 'provider timeout');
+
+    $retry = app(CreditLedger::class)->debit($user, 1, $generation);
+
+    expect($retry->id)->toBe($first->id);
+    expect($user->fresh()->credit_balance)->toBe(5);
+});
+
+test('debit is idempotent under concurrent lockForUpdate', function (): void {
+    $user = User::factory()->create(['credit_balance' => 5]);
+    $generation = Generation::factory()->for($user)->create();
+
+    $first = app(CreditLedger::class)->debit($user, 1, $generation);
+
+    DB::transaction(function () use ($user, $generation, $first): void {
+        $retry = app(CreditLedger::class)->debit($user, 1, $generation);
+        expect($retry->id)->toBe($first->id);
+    });
+
+    expect($user->fresh()->credit_balance)->toBe(4);
 });

@@ -24,7 +24,7 @@ test('dashboard shows the welcome hero and credit balance', function () {
     $this->actingAs($user)
         ->get(route('dashboard'))
         ->assertOk()
-        ->assertSee('Welcome back, Curator.')
+        ->assertSee('Welcome back, Ada Lovelace.')
         ->assertSee('data-test="dashboard-credits-card"', false)
         ->assertSee('7 credits');
 });
@@ -57,10 +57,7 @@ test('dashboard renders the stats bento grid with all three tiles', function () 
         ->assertOk()
         ->assertSee('data-test="dashboard-stats-grid"', false)
         ->assertSee('data-test="dashboard-stat-generations"', false)
-        ->assertSee('data-test="dashboard-stat-popular-style"', false)
-        ->assertSee('data-test="dashboard-stat-upgrade-pack"', false)
-        ->assertSee('Premium Pack')
-        ->assertSee('Unlock 4K export');
+        ->assertSee('data-test="dashboard-stat-popular-style"', false);
 });
 
 test('dashboard renders empty state for the recent projects section', function () {

@@ -130,6 +130,12 @@ class Show extends Component
         $this->selectedGenerationId = null;
     }
 
+    #[Computed]
+    public function canRegenerate(): bool
+    {
+        return (int) auth()->user()?->credit_balance > 0;
+    }
+
     public function retry(int $generationId): void
     {
         $this->authorize('update', $this->project);

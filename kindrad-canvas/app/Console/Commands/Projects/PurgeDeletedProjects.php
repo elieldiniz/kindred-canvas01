@@ -16,19 +16,25 @@ class PurgeDeletedProjects extends Command
     {
         $projects = Project::onlyTrashed()
             ->where('deleted_at', '<', now()->subDays(30))
-            ->with(['sourceImage', 'generations'])
+            ->with(['photos.sourceImage', 'generations'])
             ->get();
 
         $disk = Storage::disk(config('generation.disk'));
 
         foreach ($projects as $project) {
-            $sourceImage = $project->sourceImage;
+            foreach ($project->photos as $photo) {
+                $sourceImage = $photo->sourceImage;
 
-            if ($sourceImage !== null) {
-                $disk->delete($sourceImage->path);
-                $project->source_image_id = null;
-                $project->saveQuietly();
-                $sourceImage->delete();
+                if ($sourceImage !== null) {
+                    if ($sourceImage->disk !== null) {
+                        Storage::disk($sourceImage->disk)->delete($sourceImage->path);
+                    } else {
+                        $disk->delete($sourceImage->path);
+                    }
+                    $sourceImage->delete();
+                }
+
+                $photo->delete();
             }
 
             foreach ($project->generations as $generation) {

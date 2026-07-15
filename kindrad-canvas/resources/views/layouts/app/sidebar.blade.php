@@ -3,15 +3,15 @@
     <head>
         @include('partials.head')
     </head>
-    <body class="min-h-screen bg-background text-on-surface antialiased">
-        <flux:sidebar sticky collapsible="mobile" class="border-e border-outline-variant bg-surface-container text-on-surface">
+    <body class="min-h-screen bg-background text-on-surface antialiased bg-[radial-gradient(ellipse_at_80%_20%,_var(--tw-gradient-stops))] from-primary/15 via-background to-background">
+        <flux:sidebar sticky collapsible="mobile" class="border-e border-white/5 !bg-[#060f1d] text-on-surface">
             <flux:sidebar.header>
                 <x-app-logo :sidebar="true" href="{{ route('dashboard') }}" wire:navigate />
                 <flux:sidebar.collapse class="lg:hidden" />
             </flux:sidebar.header>
 
-            <flux:sidebar.nav>
-                <p class="px-3 font-mono-sm text-mono-sm uppercase tracking-widest text-on-surface-variant">
+            <flux:sidebar.nav class="pt-2">
+                <p class="px-3 text-[10px] font-extrabold uppercase tracking-[0.2em] text-white/40 mb-1 mt-2">
                     {{ __('Platform') }}
                 </p>
 
@@ -33,6 +33,26 @@
                     data-test="sidebar-credits-link"
                 >
                     {{ __('Credits') }}
+                </flux:sidebar.item>
+
+                <flux:sidebar.item
+                    icon="sparkles"
+                    :href="route('billing.plans.index')"
+                    :current="request()->routeIs('billing.plans.*')"
+                    wire:navigate
+                    data-test="sidebar-billing-plans-link"
+                >
+                    {{ __('Subscription plans') }}
+                </flux:sidebar.item>
+
+                <flux:sidebar.item
+                    icon="credit-card"
+                    :href="route('billing.index')"
+                    :current="request()->routeIs('billing.index')"
+                    wire:navigate
+                    data-test="sidebar-billing-link"
+                >
+                    {{ __('My subscription') }}
                 </flux:sidebar.item>
 
                 @if (auth()->user()?->is_admin)

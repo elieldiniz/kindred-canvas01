@@ -28,7 +28,6 @@ class Project extends Model
         'status_id',
         'title',
         'inputs',
-        'source_image_id',
         'subject_type',
         'custom_prompt',
         'pose_id',
@@ -126,14 +125,6 @@ class Project extends Model
     public function status(): BelongsTo
     {
         return $this->belongsTo(ProjectStatus::class);
-    }
-
-    /**
-     * @return BelongsTo<SourceImage, $this>
-     */
-    public function sourceImage(): BelongsTo
-    {
-        return $this->belongsTo(SourceImage::class);
     }
 
     /**

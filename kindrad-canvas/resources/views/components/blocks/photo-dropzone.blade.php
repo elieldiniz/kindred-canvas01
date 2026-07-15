@@ -1,5 +1,6 @@
 @props([
-    'wireUpload' => 'photo',
+    'wireUpload' => null,
+    'wireModel' => null,
     'wireRemove' => 'remove',
     'slotIndex' => 0,
     'slotCount' => 1,
@@ -8,6 +9,7 @@
     'label' => null,
 ])
 
+@php($wireBind = $wireModel ?: ($wireUpload ?: 'photo'))
 @php($slotLabel = $label ?? __('Photo :n', ['n' => $slotIndex + 1]))
 @php($showRemove = $slotCount > 1 || $preview !== null)
 
@@ -76,7 +78,7 @@
 
             <input
                 type="file"
-                wire:model="{{ $wireUpload }}"
+                wire:model="{{ $wireBind }}"
                 accept="image/jpeg,image/png,image/webp"
                 class="sr-only"
                 data-test="photo-input-slot-{{ $slotIndex }}"

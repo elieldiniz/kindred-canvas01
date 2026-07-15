@@ -3,6 +3,7 @@
 namespace App\Livewire\Admin\Products;
 
 use App\Models\Product;
+use App\Services\AuditLogger;
 use Livewire\Component;
 
 class Index extends Component
@@ -22,7 +23,7 @@ class Index extends Component
         $this->confirmDelete = true;
     }
 
-    public function delete(): void
+    public function delete(AuditLogger $audit): void
     {
         $product = Product::findOrFail($this->deleteId);
 
@@ -32,7 +33,16 @@ class Index extends Component
             return;
         }
 
+        $snapshot = $product->only(['id', 'name', 'slug']);
         $product->delete();
+
+        $audit->record(
+            actor: auth()->user(),
+            actionSlug: 'edit_product',
+            target: $product,
+            payload: ['event' => 'deleted', 'snapshot' => $snapshot],
+        );
+
         $this->confirmDelete = false;
         $this->deleteId = null;
     }

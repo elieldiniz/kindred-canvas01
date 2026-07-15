@@ -1,0 +1,675 @@
+openapi: 3.1.0
+info:
+  title: kindrad-canvas — Stripe Subscription Billing
+  version: 1.1.0
+  summary: REST surface for the stripe-subscription-billing feature.
+  description: |
+    Endpoints covered by SPEC CT-01. Every authenticated route lives under the
+    `auth + verified` web middleware group (so it is reachable by Livewire +
+    by HTTP clients carrying the session cookie). Webhook ingress at
+    `/stripe/webhook` is signature-verified and CSRF-exempt (see
+    `RNF-02` / `RF-11`).
+
+    The webhook endpoint accepts an opaque Stripe Event envelope; handler
+    dispatch is keyed on `event.type` and idempotency is keyed on `event.id`
+    per SPEC `CT-02`. Stripe's own object schema lives at
+    https://stripe.com/docs/api/events and is not duplicated here.
+
+servers:
+  - url: https://kindrad-canvas.test
+    description: Local development
+  - url: https://kindrad-canvas.example.com
+    description: Production placeholder
+
+tags:
+  - name: Admin Plans
+    description: Admin CRUD over the subscription plan catalog (RF-01, RF-02, UI-01, UI-02).
+  - name: Public Plans
+    description: Authenticated user's view of the active plan catalog (RF-02, RF-03, UI-03).
+  - name: Billing
+    description: Authenticated user's billing dashboard and Stripe interactions (RF-09, UI-04).
+  - name: Admin Subscriptions
+    description: Admin viewer for every subscription row (RF-12, UI-05).
+  - name: Webhooks
+    description: Stripe webhook ingress (RF-11, RNF-01, RNF-02, CT-02).
+
+security:
+  - sessionCookie: []
+
+paths:
+  /billing/plans:
+    get:
+      tags: [Public Plans]
+      operationId: listActiveSubscriptionPlans
+      summary: List active subscription plans (RF-02, UI-03).
+      description: |
+        Returns active plans ordered by `sort_order` ASC then `id` ASC.
+        Inactive plans (`is_active = false`) are excluded.
+      responses:
+        '200':
+          description: Active plan catalog.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/SubscriptionPlan'
+        '302':
+          $ref: '#/components/responses/RedirectToLogin'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /billing/plans/{plan}/checkout:
+    post:
+      tags: [Public Plans]
+      operationId: startSubscriptionCheckout
+      summary: Start a Stripe Checkout Session for the given plan (RF-03).
+      description: |
+        Creates a Stripe Customer for first-time subscribers, persists
+        `stripe_id` on the user, and returns a `checkout_url` pointing
+        to the Stripe-hosted Checkout page.
+      parameters:
+        - $ref: '#/components/parameters/PlanIdPath'
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CheckoutStartRequest'
+      responses:
+        '200':
+          description: Checkout session created.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CheckoutStartResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/PlanNotFound'
+        '422':
+          $ref: '#/components/responses/PlanMissingStripePrice'
+
+  /billing:
+    get:
+      tags: [Billing]
+      operationId: getBillingDashboard
+      summary: Billing dashboard for the authenticated user (UI-04).
+      description: |
+        Renders the user's current plan, balance, period end, and (when
+        `?success=1` is present) the post-checkout success banner.
+      parameters:
+        - in: query
+          name: success
+          required: false
+          schema:
+            type: string
+            enum: ['1']
+          description: When `1`, render the success banner with the freshly granted balance.
+      responses:
+        '200':
+          description: Dashboard rendered.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BillingDashboard'
+        '302':
+          $ref: '#/components/responses/RedirectToLogin'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /billing/portal:
+    post:
+      tags: [Billing]
+      operationId: openBillingPortal
+      summary: Create a Stripe Billing Portal session and return its URL (RF-09).
+      description: |
+        Requires a `stripe_id` on the user. Returns HTTP 404 when the user
+        has no Stripe Customer yet (no subscription to manage).
+      responses:
+        '200':
+          description: Portal session created.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PortalSessionResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          description: User has no Stripe Customer yet.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+
+  /admin/plans:
+    get:
+      tags: [Admin Plans]
+      operationId: adminListSubscriptionPlans
+      summary: List all subscription plans (admin only, RF-01, UI-01).
+      description: |
+        Includes inactive plans. Ordered by `sort_order` ASC, `id` ASC.
+      responses:
+        '200':
+          description: All plans.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/SubscriptionPlan'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+    post:
+      tags: [Admin Plans]
+      operationId: adminCreateSubscriptionPlan
+      summary: Create a subscription plan (admin only, RF-01).
+      description: |
+        Persists the plan and provisions a Stripe Product + Price. Writes
+        one `audit_logs` row with `action_id` resolving to slug
+        `edit_subscription_plan`.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PlanUpsertRequest'
+      responses:
+        '201':
+          description: Plan created.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SubscriptionPlan'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+
+  /admin/plans/{plan}:
+    patch:
+      tags: [Admin Plans]
+      operationId: adminUpdateSubscriptionPlan
+      summary: Update a subscription plan (admin only, RF-01).
+      parameters:
+        - $ref: '#/components/parameters/PlanIdPath'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PlanUpsertRequest'
+      responses:
+        '200':
+          description: Plan updated.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SubscriptionPlan'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/PlanNotFound'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+    delete:
+      tags: [Admin Plans]
+      operationId: adminDeleteSubscriptionPlan
+      summary: Soft-delete or hard-delete a plan (admin only).
+      description: |
+        Per SPEC: deactivating is the canonical "delete". This endpoint
+        is documented for completeness; the canonical toggle is
+        `PATCH /admin/plans/{plan}/toggle`. A real delete is rejected if
+        any subscription row references the plan.
+      parameters:
+        - $ref: '#/components/parameters/PlanIdPath'
+      responses:
+        '204':
+          description: Plan removed.
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/PlanNotFound'
+        '409':
+          description: Plan has active subscriptions; deactivate via toggle instead.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+
+  /admin/plans/{plan}/toggle:
+    patch:
+      tags: [Admin Plans]
+      operationId: adminToggleSubscriptionPlan
+      summary: Toggle the `is_active` flag (admin only, RF-01, UI-01).
+      parameters:
+        - $ref: '#/components/parameters/PlanIdPath'
+      responses:
+        '200':
+          description: Plan toggled.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SubscriptionPlan'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/PlanNotFound'
+
+  /admin/subscriptions:
+    get:
+      tags: [Admin Subscriptions]
+      operationId: adminListSubscriptions
+      summary: List every subscription row (admin only, RF-12, UI-05).
+      description: |
+        Includes active, past_due, canceled. Cross-tenant access is
+        guarded by `SubscriptionPolicy` (RF-13); admin role bypasses
+        ownership checks.
+      responses:
+        '200':
+          description: All subscriptions.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/SubscriptionRow'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+  /stripe/webhook:
+    post:
+      tags: [Webhooks]
+      operationId: stripeWebhookIngress
+      summary: Stripe webhook ingress (RF-11, RNF-01, RNF-02, CT-02).
+      description: |
+        Accepts `Stripe-Signature`-signed event payloads. CSRF-exempt,
+        idempotent on `event.id`. See CT-02 for the dispatch contract.
+
+        Subscribed event types (handler routing lives in
+        `App\Billing\StripeWebhookDispatcher`):
+        - `checkout.session.completed`
+        - `customer.subscription.created`
+        - `customer.subscription.updated`
+        - `customer.subscription.deleted`
+        - `invoice.payment_succeeded`
+        - `invoice.payment_failed`
+      parameters:
+        - in: header
+          name: Stripe-Signature
+          required: true
+          schema:
+            type: string
+          description: Stripe signature header, verified against `services.stripe.webhook_secret`.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/StripeEvent'
+      responses:
+        '200':
+          description: Event processed or skipped as duplicate.
+        '400':
+          description: Missing or malformed signature header.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '403':
+          description: Signature verification failed.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+
+components:
+  securitySchemes:
+    sessionCookie:
+      type: apiKey
+      in: cookie
+      name: kindrad_canvas_session
+      description: |
+        Laravel session cookie issued by Fortify on login. All authenticated
+        routes (every endpoint except `/stripe/webhook`) require this.
+
+  parameters:
+    PlanIdPath:
+      in: path
+      name: plan
+      required: true
+      schema:
+        type: integer
+        minimum: 1
+      description: Numeric `subscription_plans.id`.
+
+  responses:
+    RedirectToLogin:
+      description: Guest redirected to `/login` (web flow).
+      headers:
+        Location:
+          schema:
+            type: string
+            example: /login
+    Unauthorized:
+      description: |
+        Returned when the Livewire component aborts with 401 for an
+        authenticated-only page and the request did not redirect.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorEnvelope'
+    Forbidden:
+      description: Authenticated user is not admin (or policy denied access).
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorEnvelope'
+    ValidationFailed:
+      description: Validation error.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ValidationErrorEnvelope'
+    PlanNotFound:
+      description: Plan does not exist.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorEnvelope'
+    PlanMissingStripePrice:
+      description: Plan has no `stripe_price_id`; admin must provision it.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorEnvelope'
+
+  schemas:
+    SubscriptionPlan:
+      type: object
+      required:
+        - id
+        - slug
+        - name
+        - description
+        - credits_per_period
+        - price_cents
+        - currency
+        - interval
+        - is_active
+        - sort_order
+        - stripe_product_id
+        - stripe_price_id
+      properties:
+        id:
+          type: integer
+          minimum: 1
+          examples: [42]
+        slug:
+          type: string
+          maxLength: 255
+          examples: [starter-monthly]
+        name:
+          type: string
+          maxLength: 255
+          examples: [Starter]
+        description:
+          type: string
+          nullable: true
+          examples: [Plano inicial com 100 créditos por mês.]
+        credits_per_period:
+          type: integer
+          minimum: 1
+          examples: [100]
+        price_cents:
+          type: integer
+          minimum: 0
+          examples: [1990]
+        currency:
+          type: string
+          enum: [BRL]
+          examples: [BRL]
+        interval:
+          $ref: '#/components/schemas/SubscriptionInterval'
+        is_active:
+          type: boolean
+          examples: [true]
+        sort_order:
+          type: integer
+          minimum: 0
+          examples: [0]
+        stripe_product_id:
+          type: string
+          nullable: true
+          examples: [prod_ABC123]
+        stripe_price_id:
+          type: string
+          nullable: true
+          examples: [price_XYZ789]
+
+    SubscriptionInterval:
+      type: object
+      required: [id, slug, name]
+      properties:
+        id:
+          type: integer
+          minimum: 1
+        slug:
+          type: string
+          enum: [month, year]
+        name:
+          type: string
+          examples: [Mensal]
+
+    PlanUpsertRequest:
+      type: object
+      required:
+        - name
+        - slug
+        - credits_per_period
+        - price_cents
+        - currency
+        - interval_id
+        - is_active
+        - sort_order
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 255
+        slug:
+          type: string
+          minLength: 1
+          maxLength: 255
+          pattern: '^[a-z0-9]+(?:-[a-z0-9]+)*$'
+        description:
+          type: string
+          nullable: true
+          maxLength: 1000
+        credits_per_period:
+          type: integer
+          minimum: 1
+        price_cents:
+          type: integer
+          minimum: 0
+        currency:
+          type: string
+          enum: [BRL]
+        interval_id:
+          type: integer
+          minimum: 1
+          description: FK → `subscription_intervals.id`.
+        is_active:
+          type: boolean
+        sort_order:
+          type: integer
+          minimum: 0
+
+    CheckoutStartRequest:
+      type: object
+      description: |
+        Currently empty; reserved for future fields (coupons, trial flags).
+        The plan is selected via the path parameter.
+      additionalProperties: false
+      properties: {}
+
+    CheckoutStartResponse:
+      type: object
+      required: [checkout_url]
+      properties:
+        checkout_url:
+          type: string
+          format: uri
+          examples:
+            - https://checkout.stripe.com/c/pay/cs_test_abc123
+
+    PortalSessionResponse:
+      type: object
+      required: [portal_url]
+      properties:
+        portal_url:
+          type: string
+          format: uri
+          examples:
+            - https://billing.stripe.com/p/session/test_abc123
+
+    BillingDashboard:
+      type: object
+      required: [has_subscription, credit_balance]
+      properties:
+        has_subscription:
+          type: boolean
+        subscription:
+          oneOf:
+            - $ref: '#/components/schemas/SubscriptionRow'
+            - type: 'null'
+        credit_balance:
+          type: integer
+          minimum: 0
+        success_banner:
+          type: boolean
+          description: Mirrors `?success=1` query presence.
+
+    SubscriptionRow:
+      type: object
+      required:
+        - id
+        - user_email
+        - plan
+        - status
+        - current_period_end
+        - cancel_at_period_end
+      properties:
+        id:
+          type: integer
+        user_email:
+          type: string
+          format: email
+        plan:
+          $ref: '#/components/schemas/SubscriptionPlan'
+        status:
+          $ref: '#/components/schemas/SubscriptionStatus'
+        current_period_start:
+          type: string
+          format: date-time
+          nullable: true
+        current_period_end:
+          type: string
+          format: date-time
+          nullable: true
+        cancel_at_period_end:
+          type: boolean
+        scheduled_plan:
+          oneOf:
+            - $ref: '#/components/schemas/SubscriptionPlan'
+            - type: 'null'
+
+    SubscriptionStatus:
+      type: object
+      required: [id, slug, name]
+      properties:
+        id:
+          type: integer
+        slug:
+          type: string
+          enum:
+            - active
+            - trialing
+            - past_due
+            - canceled
+            - incomplete
+            - incomplete_expired
+            - unpaid
+            - paused
+        name:
+          type: string
+
+    StripeEvent:
+      type: object
+      description: |
+        Stripe Event object — schema owned by Stripe. Required fields here
+        are the ones we consume; additional fields are forwarded verbatim
+        into `stripe_events.payload` for traceability.
+      required: [id, type]
+      properties:
+        id:
+          type: string
+          examples: [evt_1NqTest12345]
+          description: Stripe event ID. Idempotency key for `stripe_events.event_id`.
+        type:
+          type: string
+          enum:
+            - checkout.session.completed
+            - customer.subscription.created
+            - customer.subscription.updated
+            - customer.subscription.deleted
+            - invoice.payment_succeeded
+            - invoice.payment_failed
+          description: Dispatch key — see CT-02.
+        data:
+          type: object
+          required: [object]
+          properties:
+            object:
+              type: object
+              description: Stripe object payload. Schema varies per `type`; see https://stripe.com/docs/api/events.
+        created:
+          type: integer
+          description: Unix timestamp.
+
+    ErrorEnvelope:
+      type: object
+      required: [message]
+      properties:
+        message:
+          type: string
+        code:
+          type: string
+
+    ValidationErrorEnvelope:
+      type: object
+      required: [message, errors]
+      properties:
+        message:
+          type: string
+          examples: [The given data was invalid.]
+        errors:
+          type: object
+          additionalProperties:
+            type: array
+            items:
+              type: string
+          examples:
+            - credits_per_period: ['The credits per period must be at least 1.']

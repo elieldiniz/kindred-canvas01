@@ -69,7 +69,15 @@
                 </div>
             </div>
         </section>
-    @elseif ($currentPreview && $previewStatus === 'completed')
+    @elseif (in_array($latestStatus, ['waiting', 'processing'], true))
+        <div wire:poll.{{ $refreshIntervalMs }}ms="poll" class="glass-card flex items-center gap-stack-sm border-primary/30 bg-primary/5 p-stack-sm" data-test="project-generating-banner">
+            <div class="h-3 w-3 animate-spin rounded-full border-2 border-transparent border-t-primary"></div>
+            <p class="font-mono-sm text-mono-sm text-on-surface">
+                {{ __('A new generation is in progress. This view will refresh automatically.') }}
+            </p>
+        </div>
+    @endif
+    @if ($currentPreview && $previewStatus === 'completed')
         <section class="glass-card flex flex-col overflow-hidden lg:flex-row" data-test="project-preview">
             <div class="flex min-h-[360px] items-center justify-center p-stack-lg lg:flex-1">
                 <img
@@ -124,10 +132,16 @@
                         {{ __('Download') }}
                     </button>
                     <div class="grid grid-cols-2 gap-2">
-                        <button type="button" wire:click="regenerate" class="glass-card py-2 font-label-md text-label-md text-on-surface hover:bg-surface-container-high">
+                        <button
+                            type="button"
+                            wire:click="regenerate"
+                            @disabled(! $this->canRegenerate())
+                            class="glass-card py-2 font-label-md text-label-md text-on-surface hover:bg-surface-container-high disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-transparent"
+                            title="{{ $this->canRegenerate() ? __('Generate a new variation (1 credit)') : __('You are out of credits') }}"
+                        >
                             {{ __('Regenerate') }}
                         </button>
-                        <button type="button" disabled class="glass-card py-2 font-label-md text-label-md text-on-surface-variant">
+                        <button type="button" disabled class="glass-card py-2 font-label-md text-label-md text-on-surface-variant" title="{{ __('Coming soon') }}">
                             {{ __('Edit Art') }}
                         </button>
                     </div>
@@ -176,24 +190,40 @@
         <div class="flex max-h-[32rem] flex-col gap-2 overflow-y-auto pr-1">
             @forelse ($generations as $generation)
                 @php($generationStatus = $generation->status->slug)
-                <button
-                    type="button"
+                <div
                     wire:key="generation-{{ $generation->id }}"
-                    wire:click="selectGeneration({{ $generation->id }})"
-                    class="glass-card flex w-full items-center justify-between gap-4 p-stack-sm text-left transition-all hover:-translate-y-0.5 hover:border-primary {{ $selectedGenerationId === $generation->id ? 'selection-glow active-selection' : '' }}"
+                    class="glass-card flex w-full items-center justify-between gap-4 p-stack-sm transition-all hover:-translate-y-0.5 hover:border-primary {{ $selectedGenerationId === $generation->id ? 'selection-glow active-selection' : '' }}"
                     data-test="generation-row-{{ $generation->id }}"
                 >
-                    <div class="min-w-0">
-                        <p class="font-label-md text-label-md text-on-surface truncate">{{ __('Generation #:id', ['id' => $generation->id]) }}</p>
-                        <p class="font-mono-xs text-mono-xs text-on-surface-variant">{{ $generation->created_at?->format('M j, Y · H:i:s') }}</p>
-                    </div>
+                    <button
+                        type="button"
+                        wire:click="selectGeneration({{ $generation->id }})"
+                        class="flex min-w-0 flex-1 items-center gap-4 text-left"
+                    >
+                        <div class="min-w-0 flex-1">
+                            <p class="font-label-md text-label-md text-on-surface truncate">{{ __('Generation #:id', ['id' => $generation->id]) }}</p>
+                            <p class="font-mono-xs text-mono-xs text-on-surface-variant">{{ $generation->created_at?->format('M j, Y · H:i:s') }}</p>
+                        </div>
+                    </button>
                     <div class="flex shrink-0 items-center gap-2">
                         <span class="font-mono-xs text-mono-xs text-on-surface-variant">{{ trans_choice(':count credit|:count credits', $generation->credits_charged, ['count' => $generation->credits_charged]) }}</span>
                         <span class="inline-flex items-center rounded-full px-2 py-0.5 font-mono-xs text-mono-xs {{ $statusClasses[$generationStatus] ?? $statusClasses['waiting'] }}">
                             {{ $this->statusLabel($generation) }}
                         </span>
+                        @if ($generationStatus === 'failed')
+                            <button
+                                type="button"
+                                wire:click.stop="retry({{ $generation->id }})"
+                                class="inline-flex items-center gap-1 rounded-full bg-error/15 px-2 py-0.5 font-mono-xs text-mono-xs text-error transition hover:bg-error/25"
+                                data-test="history-retry-button-{{ $generation->id }}"
+                                title="{{ __('Retry') }}"
+                            >
+                                <span class="material-symbols-outlined text-[14px]" style="font-variation-settings: 'FILL' 1, 'wght' 400;">refresh</span>
+                                {{ __('Retry') }}
+                            </button>
+                        @endif
                     </div>
-                </button>
+                </div>
             @empty
                 <div class="glass-card p-stack-md text-center font-body-sm text-body-sm text-on-surface-variant">
                     {{ __('No generation history yet.') }}

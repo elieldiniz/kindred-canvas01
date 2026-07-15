@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\CreditTransaction;
 use App\Models\CreditTransactionReason;
 use App\Models\Generation;
+use App\Models\Subscription;
 use App\Models\User;
 use App\Services\Exceptions\CreditInsufficientException;
 use Illuminate\Support\Facades\DB;
@@ -54,13 +55,23 @@ class CreditLedger
 
     /**
      * Debit credits for a generation. Atomic with users.credit_balance.
-     * Refuses if the user does not have enough credits.
+     * Idempotent: returns the existing debit row if this generation was
+     * already charged. Refuses if the user does not have enough credits.
      */
     public function debit(User $user, int $credits, Generation $reference): CreditTransaction
     {
         $this->assertPositive($credits);
 
         $reasonId = $this->reasonId('generation_debit');
+
+        $existing = CreditTransaction::where('reference_type', Generation::class)
+            ->where('reference_id', $reference->id)
+            ->where('reason_id', $reasonId)
+            ->first();
+
+        if ($existing !== null) {
+            return $existing;
+        }
 
         return DB::transaction(function () use ($user, $credits, $reasonId, $reference): CreditTransaction {
             $lockedUser = User::whereKey($user->id)->lockForUpdate()->firstOrFail();
@@ -125,7 +136,7 @@ class CreditLedger
     /**
      * Admin manual grant. Stores notes on the ledger row.
      */
-    public function adminGrant(User $user, int $credits, User $actor, string $notes): CreditTransaction
+    public function adminGrant(User $user, int $credits, ?User $actor = null, string $notes = ''): CreditTransaction
     {
         $this->assertPositive($credits);
 
@@ -145,6 +156,52 @@ class CreditLedger
                 'reference_type' => User::class,
                 'reference_id' => $actor->id,
                 'notes' => $notes,
+            ]);
+        });
+    }
+
+    /**
+     * Grant credits from a successful subscription billing cycle. Idempotent
+     * on (subscription_id, period_end_timestamp_or_zero) so Stripe's
+     * retry-driven duplicate webhook events are safe.
+     */
+    public function subscriptionGrant(Subscription $subscription, int $credits, ?int $periodEndTimestamp = null): CreditTransaction
+    {
+        $this->assertPositive($credits);
+
+        $reasonId = $this->reasonId('subscription_credit_grant');
+
+        $existing = CreditTransaction::query()
+            ->where('reason_id', $reasonId)
+            ->where('reference_type', Subscription::class)
+            ->where('reference_id', $subscription->id)
+            ->where(function ($q) use ($periodEndTimestamp): void {
+                if ($periodEndTimestamp === null) {
+                    $q->whereNull('notes');
+                } else {
+                    $q->where('notes', (string) $periodEndTimestamp);
+                }
+            })
+            ->first();
+
+        if ($existing !== null) {
+            return $existing;
+        }
+
+        return DB::transaction(function () use ($subscription, $credits, $reasonId, $periodEndTimestamp): CreditTransaction {
+            $lockedUser = User::whereKey($subscription->user_id)->lockForUpdate()->firstOrFail();
+            $newBalance = $lockedUser->credit_balance + $credits;
+            $lockedUser->credit_balance = $newBalance;
+            $lockedUser->save();
+
+            return CreditTransaction::create([
+                'user_id' => $lockedUser->id,
+                'reason_id' => $reasonId,
+                'delta' => $credits,
+                'balance_after' => $newBalance,
+                'reference_type' => Subscription::class,
+                'reference_id' => $subscription->id,
+                'notes' => $periodEndTimestamp === null ? null : (string) $periodEndTimestamp,
             ]);
         });
     }

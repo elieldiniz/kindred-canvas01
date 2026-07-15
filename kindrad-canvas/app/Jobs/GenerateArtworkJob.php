@@ -58,7 +58,11 @@ class GenerateArtworkJob implements ShouldQueue
         $generation->markProcessing();
 
         $project = Project::find($generation->project_id);
-        $sourceImage = $project?->sourceImage;
+        $sourceImage = $project?->photos()
+            ->orderBy('position')
+            ->with('sourceImage')
+            ->first()
+            ?->sourceImage;
 
         try {
             $provider = $registry->resolve($this->providerKey);

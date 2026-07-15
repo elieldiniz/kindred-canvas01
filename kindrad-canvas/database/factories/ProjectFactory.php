@@ -31,7 +31,6 @@ class ProjectFactory extends Factory
             'status_id' => $draft?->id ?? ProjectStatus::factory(),
             'title' => null,
             'inputs' => [],
-            'source_image_id' => null,
             'first_generated_at' => null,
         ];
     }
@@ -61,13 +60,6 @@ class ProjectFactory extends Factory
     {
         return $this->state(fn (array $attributes): array => [
             'layout_id' => $layoutId,
-        ]);
-    }
-
-    public function withSourceImage(int $sourceImageId): static
-    {
-        return $this->state(fn (array $attributes): array => [
-            'source_image_id' => $sourceImageId,
         ]);
     }
 }
