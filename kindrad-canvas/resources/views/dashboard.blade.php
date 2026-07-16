@@ -27,9 +27,52 @@
             ->orderByDesc('uses')
             ->with('style')
             ->first();
+
+        $dunningSubscription = App\Models\Subscription::query()
+            ->where('user_id', auth()->id())
+            ->where('stripe_status', 'past_due')
+            ->latest('id')
+            ->first();
     @endphp
 
     <div class="flex flex-col gap-section p-margin-page" data-test="dashboard-page">
+
+        @if ($dunningSubscription)
+            @php
+                $graceDays = (int) config('billing.grace_days', 7);
+                $anchor = $dunningSubscription->ends_at ?? $dunningSubscription->current_period_end;
+                $graceExpiresAt = $anchor?->copy()->addDays($graceDays);
+                $isExpired = $dunningSubscription->isPastDueAndExpired($graceDays);
+            @endphp
+            <flux:callout
+                variant="{{ $isExpired ? 'danger' : 'warning' }}"
+                icon="exclamation-triangle"
+                data-test="dashboard-dunning-banner"
+            >
+                <flux:callout.heading>
+                    {{ $isExpired
+                        ? __('Sua assinatura está com pagamento atrasado e o uso foi suspenso.')
+                        : __('Detectamos uma falha no pagamento da sua assinatura.') }}
+                </flux:callout.heading>
+                <flux:callout.text>
+                    @if ($graceExpiresAt && ! $isExpired)
+                        {{ __('Você tem até :date para atualizar o método de pagamento sem perder acesso.', ['date' => $graceExpiresAt->format('d/m/Y')]) }}
+                    @elseif ($isExpired)
+                        {{ __('O período de carência expirou. Novas gerações estão bloqueadas até a regularização.') }}
+                    @endif
+                </flux:callout.text>
+                <div class="mt-3">
+                    <a
+                        href="{{ route('billing.index') }}"
+                        wire:navigate
+                        class="inline-flex items-center gap-2 rounded-xl bg-primary px-5 py-2.5 text-sm font-bold text-white shadow-[0_0_15px_rgba(99,54,255,0.3)] hover:shadow-[0_0_25px_rgba(99,54,255,0.5)] transition-all"
+                        data-test="dashboard-dunning-banner-cta"
+                    >
+                        {{ __('Atualizar método de pagamento') }}
+                    </a>
+                </div>
+            </flux:callout>
+        @endif
 
         @if (session('status'))
             <div class="glass-card border-success/30 bg-success/10 p-stack-md font-label-md text-label-md text-success" data-test="dashboard-session-status">

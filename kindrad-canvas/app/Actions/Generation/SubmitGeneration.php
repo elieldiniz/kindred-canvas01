@@ -2,11 +2,13 @@
 
 namespace App\Actions\Generation;
 
+use App\Exceptions\BillingAccessDeniedException;
 use App\Jobs\GenerateArtworkJob;
 use App\Models\Generation;
 use App\Models\GenerationProvider as GenerationProviderModel;
 use App\Models\GenerationStatus;
 use App\Models\Project;
+use App\Models\Subscription;
 use App\Models\User;
 use App\Services\CreditLedger;
 use App\Services\Exceptions\CreditInsufficientException;
@@ -35,6 +37,8 @@ class SubmitGeneration
             if ((int) $user->credit_balance < 1) {
                 throw CreditInsufficientException::for((int) $user->credit_balance, 1);
             }
+
+            $this->ensureNotDunningExpired($user);
 
             $assembled = $this->assembler->assemble($project);
             $prompt = $assembled['prompt'];
@@ -66,5 +70,23 @@ class SubmitGeneration
 
             return $generation->refresh();
         });
+    }
+
+    private function ensureNotDunningExpired(User $user): void
+    {
+        $graceDays = (int) config('billing.grace_days', 7);
+
+        $subscription = Subscription::query()
+            ->where('user_id', $user->id)
+            ->latest('id')
+            ->first();
+
+        if ($subscription === null) {
+            return;
+        }
+
+        if ($subscription->isPastDueAndExpired($graceDays)) {
+            throw BillingAccessDeniedException::forUser($user);
+        }
     }
 }
