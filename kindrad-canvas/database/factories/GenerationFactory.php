@@ -68,8 +68,22 @@ class GenerationFactory extends Factory
         return $this->state(fn (array $attributes): array => [
             'status_id' => GenerationStatus::where('slug', 'failed')->value('id'),
             'failure_reason' => $reason,
-            'started_at' => now()->subSeconds(30),
             'completed_at' => now(),
+        ]);
+    }
+
+    public function forProject(Project $project): static
+    {
+        return $this->state(fn (): array => [
+            'project_id' => $project->id,
+            'user_id' => $project->user_id,
+        ]);
+    }
+
+    public function waiting(): static
+    {
+        return $this->state(fn (): array => [
+            'status_id' => GenerationStatus::where('slug', 'waiting')->value('id'),
         ]);
     }
 }

@@ -43,4 +43,37 @@
     </div>
 
     <div class="mt-4">{{ $subscriptions->links() }}</div>
+
+    @if ($recentFailures->isNotEmpty())
+        <section class="mt-10" data-test="admin-payment-failures-section">
+            <header class="mb-4 flex items-center justify-between">
+                <h2 class="text-lg font-semibold">{{ __('Falhas de pagamento recentes') }}</h2>
+                <span class="text-xs uppercase tracking-widest text-zinc-400">{{ __('Últimas :count', ['count' => 10]) }}</span>
+            </header>
+            <div class="overflow-hidden rounded-lg border border-white/5">
+                <table class="min-w-full divide-y divide-white/5" data-test="admin-payment-failures-table">
+                    <thead class="bg-background/50">
+                        <tr>
+                            <th class="px-4 py-3 text-left text-xs uppercase tracking-widest text-zinc-400">{{ __('Quando') }}</th>
+                            <th class="px-4 py-3 text-left text-xs uppercase tracking-widest text-zinc-400">{{ __('Usuário') }}</th>
+                            <th class="px-4 py-3 text-left text-xs uppercase tracking-widest text-zinc-400">{{ __('Evento') }}</th>
+                            <th class="px-4 py-3 text-left text-xs uppercase tracking-widest text-zinc-400">{{ __('Motivo') }}</th>
+                            <th class="px-4 py-3 text-left text-xs uppercase tracking-widest text-zinc-400">{{ __('Invoice') }}</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-white/5">
+                        @foreach ($recentFailures as $failure)
+                            <tr data-test="admin-payment-failure-row">
+                                <td class="px-4 py-3 text-sm">{{ $failure->attempted_at->format('Y-m-d H:i') }}</td>
+                                <td class="px-4 py-3 text-sm">{{ $failure->user?->email ?? '—' }}</td>
+                                <td class="px-4 py-3 text-sm">{{ $failure->event_type }}</td>
+                                <td class="px-4 py-3 text-sm">{{ $failure->reason }}</td>
+                                <td class="px-4 py-3 text-xs text-zinc-400">{{ $failure->stripe_invoice_id ?? '—' }}</td>
+                            </tr>
+                        @endforeach
+                    </tbody>
+                </table>
+            </div>
+        </section>
+    @endif
 </div>

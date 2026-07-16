@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Auth\OAuthController;
 use App\Http\Controllers\Billing\StripeWebhookController;
+use App\Http\Controllers\Gallery\ToggleExploreController;
 use App\Http\Controllers\Generations\DownloadController;
 use App\Livewire\Admin\Dashboard as AdminDashboard;
 use App\Livewire\Admin\Products\Create;
@@ -9,6 +10,8 @@ use App\Livewire\Admin\Products\Edit;
 use App\Livewire\Admin\Products\Index;
 use App\Livewire\Billing\Plans;
 use App\Livewire\Credits\Index as CreditsIndex;
+use App\Livewire\Gallery\Explore as GalleryExplore;
+use App\Livewire\Gallery\RemixController as GalleryRemix;
 use App\Livewire\Projects\Configurator;
 use App\Livewire\Projects\Show as ProjectShow;
 use Illuminate\Foundation\Http\Middleware\VerifyCsrfToken;
@@ -25,6 +28,10 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::livewire('credits', CreditsIndex::class)->name('credits.index');
     Route::livewire('billing', App\Livewire\Billing\Index::class)->name('billing.index');
     Route::livewire('billing/plans', Plans::class)->name('billing.plans.index');
+
+    Route::livewire('explore', GalleryExplore::class)->name('gallery.explore');
+    Route::post('explore/{project}/remix', GalleryRemix::class)->name('gallery.remix');
+    Route::post('projects/{project}/toggle-explore', ToggleExploreController::class)->name('projects.toggle-explore');
 
     Route::middleware('admin')->prefix('admin')->name('admin.')->group(function () {
         Route::livewire('/', AdminDashboard::class)->name('dashboard');
@@ -49,6 +56,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::livewire('prompt-templates/{template}/edit', App\Livewire\Admin\PromptTemplates\Edit::class)->name('prompt-templates.edit');
         Route::livewire('users', App\Livewire\Admin\Users\Index::class)->name('users.index');
         Route::livewire('audit-log', App\Livewire\Admin\AuditLog\Index::class)->name('audit-log.index');
+        Route::livewire('gallery', App\Livewire\Admin\Gallery\Index::class)->name('gallery.index');
+        Route::livewire('showcase', App\Livewire\Admin\Showcase\Index::class)->name('showcase.index');
     });
 });
 

@@ -169,72 +169,24 @@
         @endif
     </section>
 
-    {{-- Audit log preview --}}
-    <section class="glass-card overflow-hidden bg-surface-container/40 border border-white/10 rounded-3xl shadow-2xl backdrop-blur-md" data-test="admin-audit-log">
-        <div class="flex items-center justify-between border-b border-white/5 px-6 py-5">
+    {{-- Audit log link card --}}
+    <section
+        class="glass-card flex flex-col gap-stack-sm p-stack-lg bg-surface-container/40 border border-white/10 rounded-3xl shadow-2xl backdrop-blur-md sm:flex-row sm:items-center sm:justify-between"
+        data-test="admin-audit-log"
+    >
+        <div class="flex items-start gap-stack-md">
+            <span class="flex h-12 w-12 items-center justify-center rounded-2xl bg-primary/20 text-primary">
+                <span class="material-symbols-outlined text-[24px]" style="font-variation-settings: 'FILL' 1, 'wght' 400;">history</span>
+            </span>
             <div>
-                <h2 class="font-bold text-lg text-white">
-                    {{ __('Recent admin actions') }}
-                </h2>
-                <p class="text-xs text-white/50 mt-0.5">
-                    {{ __('Last 20 audit log entries') }}
-                </p>
+                <h2 class="font-bold text-lg text-white">{{ __('Audit log') }}</h2>
+                <p class="mt-0.5 text-sm text-white/50">{{ __('Track all admin actions across the platform.') }}</p>
             </div>
         </div>
-
-        @php($logs = $this->recentAuditLogs())
-
-        @if ($logs === [])
-            <div class="p-stack-lg text-center" data-test="admin-audit-empty">
-                <span class="material-symbols-outlined text-[36px] text-on-surface-variant" style="font-variation-settings: 'FILL' 0, 'wght' 400;">inbox</span>
-                <p class="mt-stack-sm font-body-md text-body-md text-on-surface-variant">
-                    {{ __('No audit log entries yet.') }}
-                </p>
-            </div>
-        @else
-            <table class="w-full text-left" data-test="admin-audit-table">
-                <thead>
-                    <tr>
-                        <th class="px-6 py-4 text-left text-xs font-semibold uppercase tracking-wider text-white/50 border-b border-white/5">
-                            {{ __('When') }}
-                        </th>
-                        <th class="px-6 py-4 text-left text-xs font-semibold uppercase tracking-wider text-white/50 border-b border-white/5">
-                            {{ __('Actor') }}
-                        </th>
-                        <th class="px-6 py-4 text-left text-xs font-semibold uppercase tracking-wider text-white/50 border-b border-white/5">
-                            {{ __('Action') }}
-                        </th>
-                        <th class="px-6 py-4 text-left text-xs font-semibold uppercase tracking-wider text-white/50 border-b border-white/5">
-                            {{ __('Target') }}
-                        </th>
-                    </tr>
-                </thead>
-                <tbody>
-                    @foreach ($logs as $log)
-                        <tr class="border-b border-white/5 last:border-b-0 hover:bg-white/[0.02] transition-colors" data-test="admin-audit-row">
-                            <td class="px-6 py-4 text-xs text-white/50 whitespace-nowrap">
-                                {{ $log['created_at'] }}
-                            </td>
-                            <td class="px-6 py-4 font-medium text-sm text-white">
-                                {{ $log['actor'] ?? '—' }}
-                            </td>
-                            <td class="px-6 py-4 text-sm font-semibold text-primary">
-                                {{ $log['action'] }}
-                            </td>
-                            <td class="px-6 py-4 text-xs text-white/60">
-                                @if (! empty($log['target_href']))
-                                    <flux:link :href="$log['target_href']" wire:navigate>
-                                        {{ $log['target_label'] }}
-                                    </flux:link>
-                                @else
-                                    {{ $log['target_label'] }}
-                                @endif
-                            </td>
-                        </tr>
-                    @endforeach
-                </tbody>
-            </table>
-        @endif
+        <flux:button :href="route('admin.audit-log.index')" wire:navigate variant="primary" data-test="admin-audit-go">
+            <span class="material-symbols-outlined text-[18px]" aria-hidden="true">arrow_forward</span>
+            {{ __('Open audit log') }}
+        </flux:button>
     </section>
 
 </div>

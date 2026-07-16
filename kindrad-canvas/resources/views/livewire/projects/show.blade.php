@@ -40,6 +40,33 @@
         </a>
     </header>
 
+    @php
+        $showFreeTierNotice = auth()->id() === $project->user_id
+            && (auth()->user()?->isFreeTier() ?? false)
+            && $project->is_published
+            && ! session()->has('gallery_notice_dismissed_project_' . $project->id);
+    @endphp
+
+    @if ($showFreeTierNotice)
+        <aside
+            class="flex items-start gap-stack-md rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-xs text-white/70"
+            data-test="gallery-free-tier-notice"
+        >
+            <span class="material-symbols-outlined mt-0.5 text-[18px] text-primary" style="font-variation-settings: 'FILL' 1, 'wght' 400;">photo</span>
+            <div class="flex-1 space-y-1">
+                <p class="font-semibold text-white">{{ __('This artwork appears in the public gallery') }}</p>
+                <p>{{ __('Any logged-in user can discover and remix it from /explore. You can hide it from public view at any time.') }}</p>
+                <form action="{{ route('projects.toggle-explore', $project) }}" method="POST" class="mt-2">
+                    @csrf
+                    <flux:button type="submit" size="xs" variant="ghost" data-test="gallery-hide-btn">
+                        <span class="material-symbols-outlined text-[14px]" aria-hidden="true">visibility_off</span>
+                        {{ __('Hide this project from the public gallery') }}
+                    </flux:button>
+                </form>
+            </div>
+        </aside>
+    @endif
+
     @if ($total > 0)
         <div class="grid gap-stack-sm sm:grid-cols-3" data-test="project-stats">
             <div class="glass-card flex flex-col gap-1 p-stack-md">

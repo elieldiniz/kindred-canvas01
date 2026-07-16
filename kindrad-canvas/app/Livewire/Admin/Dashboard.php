@@ -2,14 +2,8 @@
 
 namespace App\Livewire\Admin;
 
-use App\Models\AuditLog;
-use App\Models\Category;
 use App\Models\CreditTransaction;
 use App\Models\Generation;
-use App\Models\Layout;
-use App\Models\Product;
-use App\Models\PromptTemplate;
-use App\Models\Style;
 use App\Models\Subscription;
 use App\Models\SubscriptionPlan;
 use App\Models\SubscriptionStatus;
@@ -61,52 +55,6 @@ class Dashboard extends Component
             ->groupBy(fn (Generation $g) => $g->status?->slug ?? 'unknown')
             ->map->count()
             ->toArray();
-    }
-
-    /**
-     * @return array<int, array{id: int, actor: ?string, action: string, target_label: string, target_href: ?string, created_at: ?string}>
-     */
-    public function recentAuditLogs(): array
-    {
-        return AuditLog::query()
-            ->with(['actor', 'action'])
-            ->latest('id')
-            ->limit(20)
-            ->get()
-            ->map(function (AuditLog $log): array {
-                return [
-                    'id' => $log->id,
-                    'actor' => $log->actor?->email,
-                    'action' => $log->action?->name ?? $log->action?->slug ?? 'unknown',
-                    'target_label' => $this->describeAuditTarget($log),
-                    'target_href' => $this->auditTargetHref($log),
-                    'created_at' => $log->created_at?->format('M j, Y · H:i'),
-                ];
-            })
-            ->all();
-    }
-
-    private function describeAuditTarget(AuditLog $log): string
-    {
-        return match ($log->target_type) {
-            SubscriptionPlan::class => 'Plano #'.$log->target_id,
-            User::class => 'Usuário #'.$log->target_id,
-            Product::class => 'Produto #'.$log->target_id,
-            Category::class => 'Categoria #'.$log->target_id,
-            Style::class => 'Estilo #'.$log->target_id,
-            Layout::class => 'Layout #'.$log->target_id,
-            PromptTemplate::class => 'Prompt template #'.$log->target_id,
-            default => '#'.$log->target_id,
-        };
-    }
-
-    private function auditTargetHref(AuditLog $log): ?string
-    {
-        return match ($log->target_type) {
-            SubscriptionPlan::class => route('admin.plans.edit', $log->target_id, false),
-            User::class => route('admin.users.index', [], false),
-            default => null,
-        };
     }
 
     public function totalSubscriptions(): int

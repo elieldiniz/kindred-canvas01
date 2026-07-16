@@ -9,6 +9,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Support\Facades\Storage;
 
 class Project extends Model
 {
@@ -32,6 +33,9 @@ class Project extends Model
         'custom_prompt',
         'pose_id',
         'first_generated_at',
+        'is_published',
+        'is_in_explore',
+        'remixed_from_project_id',
     ];
 
     /**
@@ -42,6 +46,8 @@ class Project extends Model
         return [
             'inputs' => 'array',
             'first_generated_at' => 'datetime',
+            'is_published' => 'boolean',
+            'is_in_explore' => 'boolean',
         ];
     }
 
@@ -162,5 +168,61 @@ class Project extends Model
     public function isModeLocked(): bool
     {
         return $this->first_generated_at !== null;
+    }
+
+    /**
+     * @return BelongsTo<Project, $this>
+     */
+    public function remixedFrom(): BelongsTo
+    {
+        return $this->belongsTo(self::class, 'remixed_from_project_id');
+    }
+
+    /**
+     * @return HasMany<GalleryFavorite, $this>
+     */
+    public function favorites(): HasMany
+    {
+        return $this->hasMany(GalleryFavorite::class);
+    }
+
+    /**
+     * URL of the latest completed generation's image, or null when there is no
+     * previewable artifact yet (S3 storage; signed URL when needed).
+     */
+    public function previewImageUrl(): ?string
+    {
+        $gen = $this->latestGeneration;
+
+        if ($gen === null || $gen->result_path === null) {
+            return null;
+        }
+
+        try {
+            $disk = config('generation.disk');
+
+            return Storage::disk($disk)->url($gen->result_path);
+        } catch (\Throwable) {
+            return null;
+        }
+    }
+
+    /**
+     * Whether the author was a free-tier user at the time this project is being
+     * considered for the public gallery. Used by the Explore query.
+     */
+    public function isFromFreeTier(): bool
+    {
+        if (! $this->relationLoaded('user')) {
+            $this->load('user');
+        }
+
+        $user = $this->user;
+
+        if ($user === null) {
+            return false;
+        }
+
+        return $user->isFreeTier();
     }
 }

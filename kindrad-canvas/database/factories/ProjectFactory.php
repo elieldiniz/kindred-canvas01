@@ -42,6 +42,11 @@ class ProjectFactory extends Factory
         ]);
     }
 
+    public function forUser(User $user): static
+    {
+        return $this->state(fn (): array => ['user_id' => $user->id]);
+    }
+
     public function withCategory(int $categoryId): static
     {
         return $this->state(fn (array $attributes): array => [
