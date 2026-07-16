@@ -80,12 +80,13 @@ test('admin sidebar lists catalog sections as disabled placeholders', function (
         ->assertSee('Audit log');
 });
 
-test('admin dashboard shows empty audit log when there are no entries', function (): void {
+test('admin dashboard surfaces a link card to the dedicated audit log page', function (): void {
     $admin = User::factory()->create(['is_admin' => true]);
 
     actingAs($admin)
         ->get(route('admin.dashboard'))
         ->assertSuccessful()
-        ->assertSee('data-test="admin-audit-empty"', false)
-        ->assertSee('No audit log entries yet.');
+        ->assertSee('data-test="admin-audit-log"', false)
+        ->assertSee('data-test="admin-audit-go"', false)
+        ->assertSee('Open audit log', false);
 });

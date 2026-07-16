@@ -1,158 +1,271 @@
-<div class="flex flex-col gap-section" data-test="admin-users-index">
+<div>
+    {{-- Metrics dashboard card --}}
+    <section
+        class="mb-6 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4"
+        data-test="admin-users-metrics"
+    >
+        <x-admin.metric-card
+            icon="group"
+            :label="__('Total')"
+            :value="$metrics['total']"
+            data-test="admin-users-metric-total"
+        />
+        <x-admin.metric-card
+            icon="person"
+            :label="__('Active')"
+            :value="$metrics['active']"
+            data-test="admin-users-metric-active"
+        />
+        @if ($metrics['admins'] > 0 && $metrics['admins'] < $metrics['total'])
+            <x-admin.metric-card
+                icon="shield_person"
+                :label="__('Admins')"
+                :value="$metrics['admins']"
+                data-test="admin-users-metric-admins"
+            />
+        @endif
+        @if ($metrics['deleted'] > 0)
+            <x-admin.metric-card
+                icon="delete"
+                :label="__('Soft-deleted')"
+                :value="$metrics['deleted']"
+                data-test="admin-users-metric-deleted"
+            />
+        @endif
+        @if ($metrics['suspended'] > 0)
+            <x-admin.metric-card
+                icon="block"
+                :label="__('Suspended')"
+                :value="$metrics['suspended']"
+                data-test="admin-users-metric-suspended"
+            />
+        @endif
+        @if ($metrics['past_due'] > 0)
+            <x-admin.metric-card
+                icon="priority_high"
+                :label="__('past_due')"
+                :value="$metrics['past_due']"
+                data-test="admin-users-metric-past-due"
+            />
+        @endif
+        @if ($metrics['with_active_subscription'] > 0)
+            <x-admin.metric-card
+                icon="workspace_premium"
+                :label="__('With active subscription')"
+                :value="$metrics['with_active_subscription']"
+                data-test="admin-users-metric-active-subscription"
+            />
+        @endif
+    </section>
 
-    <header>
-        <h1 class="font-bold text-3xl text-white">
-            {{ __('Users') }}
-        </h1>
-        <p class="mt-stack-sm font-body-sm text-body-sm text-on-surface-variant">
-            {{ __('Manage users, grant credits, and toggle admin status') }}
-        </p>
-    </header>
-
-    @if ($users->isEmpty())
-        <div class="glass-card p-stack-lg text-center" data-test="admin-users-empty">
-            <span class="material-symbols-outlined text-[36px] text-on-surface-variant" style="font-variation-settings: 'FILL' 0, 'wght' 400;">user-group</span>
-            <p class="mt-stack-sm font-body-md text-body-md text-on-surface-variant">
-                {{ __('No users yet.') }}
-            </p>
-        </div>
-    @else
-        <div class="glass-card overflow-x-auto p-2 bg-surface-container/40 border border-white/10 rounded-3xl shadow-2xl backdrop-blur-md" data-test="admin-users-table">
-            <table class="w-full min-w-[800px] text-left">
-                <thead>
-                    <tr>
-                        <th class="w-[40%] px-6 py-4 text-left text-xs font-semibold uppercase tracking-wider text-white/50 border-b border-white/5">
-                            {{ __('User') }}
-                        </th>
-                        <th class="w-[15%] px-6 py-4 text-right text-xs font-semibold uppercase tracking-wider text-white/50 border-b border-white/5">
-                            {{ __('Credits') }}
-                        </th>
-                        <th class="w-[15%] px-6 py-4 text-left text-xs font-semibold uppercase tracking-wider text-white/50 border-b border-white/5">
-                            {{ __('Role') }}
-                        </th>
-                        <th class="w-[15%] px-6 py-4 text-left text-xs font-semibold uppercase tracking-wider text-white/50 border-b border-white/5">
-                            {{ __('Joined') }}
-                        </th>
-                        <th class="w-[15%] px-6 py-4 text-right text-xs font-semibold uppercase tracking-wider text-white/50 border-b border-white/5">
-                            {{ __('Actions') }}
-                        </th>
-                    </tr>
-                </thead>
-                <tbody>
-                    @foreach ($users as $u)
-                        <tr class="border-b border-white/5 hover:bg-white/[0.02] transition-colors" data-test="admin-user-row" wire:key="user-{{ $u->id }}">
-                            <td class="px-6 py-4">
-                                <div class="flex items-center gap-4">
-                                    <flux:avatar :name="$u->name" size="sm" />
-                                    <div class="min-w-0">
-                                        <p class="truncate font-medium text-sm text-white">
-                                            {{ $u->name }}
-                                        </p>
-                                        <p class="truncate text-xs text-white/50 mt-0.5">
-                                            {{ $u->email }}
-                                        </p>
-                                    </div>
-                                </div>
-                            </td>
-                            <td class="px-6 py-4 text-right">
-                                <span class="inline-flex items-center gap-1 whitespace-nowrap rounded-full bg-gradient-to-r from-primary/20 to-transparent border border-primary/20 px-3 py-1 text-xs font-semibold text-primary shadow-sm">
-                                    <span class="material-symbols-outlined text-[14px]" style="font-variation-settings: 'FILL' 1, 'wght' 400;">bolt</span>
-                                    {{ $u->credit_balance }}
-                                </span>
-                            </td>
-                            <td class="px-6 py-4">
-                                @if ($u->is_admin)
-                                    <flux:badge variant="primary" size="sm" data-test="admin-user-is-admin">
-                                        {{ __('Admin') }}
-                                    </flux:badge>
-                                @else
-                                    <flux:badge variant="default" size="sm">
-                                        {{ __('User') }}
-                                    </flux:badge>
-                                @endif
-                            </td>
-                            <td class="px-6 py-4 whitespace-nowrap text-xs text-white/60">
-                                {{ $u->created_at?->format('M j, Y') }}
-                            </td>
-                            <td class="px-6 py-4 text-right">
-                                <div class="flex items-center justify-end gap-2">
-                                    <button
-                                        type="button"
-                                        wire:click="openGrantModal({{ $u->id }})"
-                                        class="text-xs font-semibold text-white/70 hover:text-white px-3 py-1.5 rounded-lg border border-white/10 hover:bg-white/5 transition-all"
-                                        data-test="admin-user-grant-button"
-                                    >
-                                        {{ __('Grant') }}
-                                    </button>
-                                    @if ($u->id !== auth()->id())
-                                        <button
-                                            type="button"
-                                            wire:click="toggleAdmin({{ $u->id }})"
-                                            class="text-xs font-semibold {{ $u->is_admin ? 'text-red-400 hover:text-red-300 border-red-500/20 hover:bg-red-500/10' : 'text-primary/90 hover:text-primary border-primary/20 hover:bg-primary/10' }} px-3 py-1.5 rounded-lg border transition-all"
-                                            data-test="admin-user-toggle-admin"
-                                        >
-                                            {{ $u->is_admin ? __('Demote') : __('Promote') }}
-                                        </button>
-                                    @endif
-                                </div>
-                            </td>
-                        </tr>
-                    @endforeach
-                </tbody>
-            </table>
-        </div>
-    @endif
-
-    @error('toggleAdmin')
-        <flux:callout variant="danger" icon="exclamation-triangle">
-            {{ $message }}
-        </flux:callout>
-    @enderror
-
-    <flux:modal wire:model="showGrantModal" data-test="admin-user-grant-modal">
-        <div class="space-y-stack-md">
-            <div>
-                <flux:heading size="lg">{{ __('Grant credits') }}</flux:heading>
-                <flux:text class="mt-stack-sm text-on-surface-variant">
-                    {{ __('Add credits to a user account. The transaction is logged with your name as the actor.') }}
-                </flux:text>
-            </div>
-
-            <form wire:submit="grant" class="space-y-stack-md">
-                <flux:input
-                    wire:model="grantAmount"
-                    type="number"
-                    min="1"
-                    :label="__('Amount')"
-                    required
-                    data-test="admin-user-grant-amount"
-                />
-
-                <flux:textarea
-                    wire:model="grantNotes"
-                    :label="__('Notes')"
-                    :placeholder="__('Reason for granting credits (visible in audit log)')"
-                    rows="2"
-                    required
-                    data-test="admin-user-grant-notes"
-                />
-
-                <div class="flex justify-end gap-stack-sm pt-stack-sm">
-                    <flux:modal.close>
-                        <flux:button variant="ghost" wire:click="$set('showGrantModal', false)">
-                            {{ __('Cancel') }}
-                        </flux:button>
-                    </flux:modal.close>
-
-                    <flux:button
-                        type="submit"
-                        variant="primary"
-                        data-test="admin-user-grant-confirm"
+    {{-- Users table --}}
+    <div class="overflow-hidden rounded-lg border border-white/5" data-test="admin-users-table-wrapper">
+        <table class="min-w-full divide-y divide-white/5" data-test="admin-users-table">
+            <thead class="bg-background/50">
+                <tr>
+                    <th class="px-4 py-3 text-left text-xs uppercase tracking-widest text-zinc-400">{{ __('User') }}</th>
+                    <th class="px-4 py-3 text-left text-xs uppercase tracking-widest text-zinc-400">{{ __('Credits') }}</th>
+                    <th class="px-4 py-3 text-left text-xs uppercase tracking-widest text-zinc-400">{{ __('Role') }}</th>
+                    <th class="px-4 py-3 text-left text-xs uppercase tracking-widest text-zinc-400">{{ __('Joined') }}</th>
+                    <th class="px-4 py-3 text-right text-xs uppercase tracking-widest text-zinc-400">{{ __('Actions') }}</th>
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-white/5">
+                @forelse ($users as $row)
+                    <tr
+                        data-test="admin-users-row-{{ $row->id }}"
+                        @class(['opacity-60' => $row->trashed()])
                     >
-                        {{ __('Grant credits') }}
+                        <td class="px-4 py-3">
+                            <div class="flex items-center gap-3">
+                                <div class="flex h-9 w-9 items-center justify-center rounded-full bg-gradient-to-br from-primary to-purple-600 text-xs font-bold text-white">
+                                    {{ $row->initials() }}
+                                </div>
+                                <div>
+                                    <div class="font-medium text-on-surface">{{ $row->name }}</div>
+                                    <div class="text-xs text-on-surface-variant">{{ $row->email }}</div>
+                                </div>
+                            </div>
+                        </td>
+                        <td class="px-4 py-3">
+                            <div class="flex items-center gap-2 text-sm">
+                                <span class="material-symbols-outlined text-yellow-500 text-[16px]" style="font-variation-settings: 'FILL' 1, 'wght' 400;">bolt</span>
+                                {{ (int) $row->credit_balance }}
+                            </div>
+                        </td>
+                        <td class="px-4 py-3">
+                            @if ($row->is_admin)
+                                <flux:badge color="primary">{{ __('Admin') }}</flux:badge>
+                            @else
+                                <flux:badge>{{ __('User') }}</flux:badge>
+                            @endif
+                            @if ($row->is_suspended)
+                                <flux:badge color="warning" class="ml-1">{{ __('Suspended') }}</flux:badge>
+                            @endif
+                            @if ($row->trashed())
+                                <flux:badge color="danger" class="ml-1">{{ __('Deleted') }}</flux:badge>
+                            @endif
+                        </td>
+                        <td class="px-4 py-3 text-sm text-on-surface-variant">{{ $row->created_at->format('M j, Y') }}</td>
+                        <td class="px-4 py-3 text-right">
+                            <button
+                                type="button"
+                                wire:click="openSettings({{ $row->id }})"
+                                class="inline-flex items-center gap-2 rounded-lg border border-white/10 bg-white/5 px-4 py-2 text-xs font-semibold text-on-surface hover:bg-white/10"
+                                data-test="admin-users-settings-{{ $row->id }}"
+                            >
+                                <span class="material-symbols-outlined text-[16px]" aria-hidden="true">settings</span>
+                                {{ __('Configurações') }}
+                            </button>
+                        </td>
+                    </tr>
+                @empty
+                    <tr>
+                        <td colspan="5" class="px-4 py-6 text-center text-on-surface-variant" data-test="admin-users-empty">
+                            {{ __('No users yet.') }}
+                        </td>
+                    </tr>
+                @endforelse
+            </tbody>
+        </table>
+    </div>
+
+    <div class="mt-4">{{ $users->links() }}</div>
+
+    {{-- Settings modal --}}
+    <flux:modal wire:model="showSettingsModal" class="md:w-[36rem]" data-test="admin-users-settings-modal">
+        @if ($targetUser)
+            <div class="space-y-6">
+                <header class="space-y-1">
+                    <h2 class="text-lg font-semibold">{{ $targetUser->name }}</h2>
+                    <p class="text-xs text-on-surface-variant">{{ $targetUser->email }}</p>
+                </header>
+
+                {{-- Role --}}
+                <section class="space-y-2">
+                    <h3 class="text-xs uppercase tracking-widest text-on-surface-variant">{{ __('Role') }}</h3>
+                    <div class="flex items-center justify-between rounded-lg border border-white/10 bg-white/5 px-4 py-3">
+                        <div>
+                            <p class="font-medium">{{ $targetUser->is_admin ? __('Admin') : __('User') }}</p>
+                            <p class="text-xs text-on-surface-variant">{{ __('Toggle admin access for this account.') }}</p>
+                        </div>
+                        <flux:button wire:click="toggleAdmin" size="sm" variant="primary" data-test="admin-users-toggle-admin">
+                            {{ $targetUser->is_admin ? __('Demote') : __('Promote') }}
+                        </flux:button>
+                    </div>
+                </section>
+
+                {{-- Grant credits --}}
+                <section class="space-y-2">
+                    <h3 class="text-xs uppercase tracking-widest text-on-surface-variant">{{ __('Credits') }}</h3>
+                    <div class="rounded-lg border border-white/10 bg-white/5 px-4 py-3">
+                        <form wire:submit="grant" class="space-y-3">
+                            <flux:input
+                                wire:model="grantAmount"
+                                type="number"
+                                :label="__('Amount')"
+                                min="1"
+                                data-test="admin-users-grant-amount"
+                            />
+                            <flux:input
+                                wire:model="grantNotes"
+                                type="text"
+                                :label="__('Reason / notes')"
+                                data-test="admin-users-grant-notes"
+                            />
+                            @error('grantAmount') <p class="text-xs text-red-400">{{ $message }}</p> @enderror
+                            @error('grantNotes') <p class="text-xs text-red-400">{{ $message }}</p> @enderror
+                            <flux:button type="submit" variant="primary" data-test="admin-users-grant-submit">
+                                {{ __('Grant') }}
+                            </flux:button>
+                        </form>
+                    </div>
+                </section>
+
+                {{-- Suspend --}}
+                <section class="space-y-2">
+                    <h3 class="text-xs uppercase tracking-widest text-on-surface-variant">{{ __('Access') }}</h3>
+                    <div class="flex items-center justify-between rounded-lg border border-white/10 bg-white/5 px-4 py-3">
+                        <div>
+                            <p class="font-medium">
+                                @if ($targetUser->is_suspended)
+                                    {{ __('User is suspended') }}
+                                @else
+                                    {{ __('User is active') }}
+                                @endif
+                            </p>
+                            <p class="text-xs text-on-surface-variant">{{ __('Suspended users cannot log in.') }}</p>
+                        </div>
+                        @if ($targetUser->is_suspended)
+                            <flux:button wire:click="unsuspend" variant="primary" data-test="admin-users-unsuspend">
+                                {{ __('Reactivate') }}
+                            </flux:button>
+                        @else
+                            <flux:button wire:click="suspend" variant="danger" data-test="admin-users-suspend">
+                                {{ __('Suspender') }}
+                            </flux:button>
+                        @endif
+                    </div>
+                </section>
+
+                {{-- Reset password --}}
+                <section class="space-y-2">
+                    <h3 class="text-xs uppercase tracking-widest text-on-surface-variant">{{ __('Security') }}</h3>
+                    <div class="rounded-lg border border-white/10 bg-white/5 px-4 py-3">
+                        <div class="mb-3">
+                            <p class="font-medium">{{ __('Reset password') }}</p>
+                            <p class="text-xs text-on-surface-variant">{{ __('Set a new password for this user.') }}</p>
+                        </div>
+
+                        <form wire:submit="resetPassword" class="space-y-3">
+                            <flux:input
+                                wire:model="newPassword"
+                                type="text"
+                                viewable
+                                :label="__('New password')"
+                                data-test="admin-users-new-password"
+                            />
+                            @error('newPassword') <p class="text-xs text-red-400">{{ $message }}</p> @enderror
+
+                            <div class="flex items-center justify-between gap-3">
+                                <flux:button
+                                    type="button"
+                                    variant="ghost"
+                                    wire:click="generatePassword"
+                                    data-test="admin-users-generate-password"
+                                >
+                                    <span class="material-symbols-outlined text-[16px]" aria-hidden="true">autorenew</span>
+                                    {{ __('Generate') }}
+                                </flux:button>
+
+                                <div class="flex items-center gap-2">
+                                    <flux:button
+                                        type="button"
+                                        variant="ghost"
+                                        wire:click="cancelPasswordReset"
+                                        data-test="admin-users-password-cancel"
+                                    >
+                                        {{ __('Cancel') }}
+                                    </flux:button>
+                                    <flux:button
+                                        type="submit"
+                                        variant="primary"
+                                        data-test="admin-users-reset-password"
+                                    >
+                                        {{ __('Update password') }}
+                                    </flux:button>
+                                </div>
+                            </div>
+                        </form>
+                    </div>
+                </section>
+
+                <footer class="flex justify-end">
+                    <flux:button wire:click="closeSettings" variant="ghost" data-test="admin-users-settings-close">
+                        {{ __('Close') }}
                     </flux:button>
-                </div>
-            </form>
-        </div>
+                </footer>
+            </div>
+        @endif
     </flux:modal>
 </div>

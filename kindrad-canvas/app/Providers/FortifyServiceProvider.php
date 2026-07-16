@@ -4,8 +4,11 @@ namespace App\Providers;
 
 use App\Actions\Fortify\CreateNewUser;
 use App\Actions\Fortify\ResetUserPassword;
+use App\Models\User;
 use Illuminate\Cache\RateLimiting\Limit;
+use Illuminate\Contracts\Auth\Authenticatable;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Support\Str;
@@ -13,31 +16,59 @@ use Laravel\Fortify\Fortify;
 
 class FortifyServiceProvider extends ServiceProvider
 {
-    /**
-     * Register any application services.
-     */
     public function register(): void
     {
         //
     }
 
-    /**
-     * Bootstrap any application services.
-     */
     public function boot(): void
     {
         $this->configureActions();
         $this->configureViews();
         $this->configureRateLimiting();
+        $this->configureAuthentication();
     }
 
-    /**
-     * Configure Fortify actions.
-     */
     private function configureActions(): void
     {
         Fortify::resetUserPasswordsUsing(ResetUserPassword::class);
         Fortify::createUsersUsing(CreateNewUser::class);
+    }
+
+    /**
+     * Suspended users (is_suspended = true) cannot authenticate via Fortify
+     * (login form + 2FA recovery). Soft-deleted users are also rejected.
+     * Existing sessions are not invalidated here — admin actions check the flag.
+     *
+     * NOTE: Fortify's custom authenticateUsing callback bypasses the default
+     * guard->attempt() password check; this wrapper re-implements it here.
+     */
+    private function configureAuthentication(): void
+    {
+        Fortify::authenticateUsing(function (Request $request) {
+            $user = User::query()
+                ->withTrashed()
+                ->where(Fortify::username(), $request->input(Fortify::username()))
+                ->first();
+
+            if ($user === null) {
+                return null;
+            }
+
+            if ($user->trashed() || $user->is_suspended) {
+                return null;
+            }
+
+            if (! $user instanceof Authenticatable) {
+                return null;
+            }
+
+            if (! Hash::check((string) $request->input('password'), (string) $user->getAuthPassword())) {
+                return null;
+            }
+
+            return $user;
+        });
     }
 
     /**
