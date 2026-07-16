@@ -311,7 +311,8 @@ it('records audit log on user toggle admin', function (): void {
 
     Livewire::actingAs($this->admin)
         ->test(UsersIndex::class)
-        ->call('toggleAdmin', $target->id)
+        ->call('openSettings', $target->id)
+        ->call('toggleAdmin')
         ->assertHasNoErrors();
 
     $log = AuditLog::where('target_type', User::class)->where('target_id', $target->id)->first();
@@ -323,7 +324,8 @@ it('records audit log on user toggle admin', function (): void {
 it('does not record audit log when self-demotion is blocked', function (): void {
     Livewire::actingAs($this->admin)
         ->test(UsersIndex::class)
-        ->call('toggleAdmin', $this->admin->id)
+        ->call('openSettings', $this->admin->id)
+        ->call('toggleAdmin')
         ->assertHasErrors(['toggleAdmin']);
 
     $this->assertDatabaseMissing('audit_logs', [
@@ -338,7 +340,7 @@ it('records audit log on credit grant with amount + notes', function (): void {
 
     Livewire::actingAs($this->admin)
         ->test(UsersIndex::class)
-        ->set('grantUserId', $target->id)
+        ->call('openSettings', $target->id)
         ->set('grantAmount', 50)
         ->set('grantNotes', 'Welcome bonus')
         ->call('grant')
