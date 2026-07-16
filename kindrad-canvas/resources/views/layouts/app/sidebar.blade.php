@@ -36,6 +36,16 @@
                 </flux:sidebar.item>
 
                 <flux:sidebar.item
+                    icon="photo"
+                    :href="route('gallery.explore')"
+                    :current="request()->routeIs('gallery.explore')"
+                    wire:navigate
+                    data-test="sidebar-explore-link"
+                >
+                    {{ __('Explore') }}
+                </flux:sidebar.item>
+
+                <flux:sidebar.item
                     icon="sparkles"
                     :href="route('billing.plans.index')"
                     :current="request()->routeIs('billing.plans.*')"

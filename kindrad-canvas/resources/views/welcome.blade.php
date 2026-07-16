@@ -168,6 +168,9 @@
             </div>
         </section>
 
+        {{-- Showcase carousel --}}
+        @include('partials.showcase-carousel')
+
         {{-- How it works --}}
         <section id="how-it-works" class="border-t border-outline-variant">
             <div class="mx-auto max-w-7xl px-stack-lg py-section">
@@ -221,6 +224,9 @@
                 </div>
             </div>
         </section>
+
+        {{-- Welcome plans section --}}
+        <livewire:welcome.plans />
 
         {{-- Footer --}}
         <footer class="border-t border-outline-variant">

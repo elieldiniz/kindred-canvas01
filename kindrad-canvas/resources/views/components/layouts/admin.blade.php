@@ -127,6 +127,24 @@
                         >
                             {{ __('Audit log') }}
                         </flux:navlist.item>
+                        <flux:navlist.item
+                            icon="photo"
+                            :href="route('admin.gallery.index')"
+                            :current="request()->routeIs('admin.gallery.*')"
+                            wire:navigate
+                            data-test="admin-nav-gallery"
+                        >
+                            {{ __('Gallery') }}
+                        </flux:navlist.item>
+                        <flux:navlist.item
+                            icon="squares-2x2"
+                            :href="route('admin.showcase.index')"
+                            :current="request()->routeIs('admin.showcase.*')"
+                            wire:navigate
+                            data-test="admin-nav-showcase"
+                        >
+                            {{ __('Showcase') }}
+                        </flux:navlist.item>
                     </flux:navlist.group>
                 </nav>
 
