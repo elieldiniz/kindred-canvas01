@@ -6,6 +6,7 @@ use Carbon\CarbonInterface;
 use Database\Factories\SubscriptionFactory as AppSubscriptionFactory;
 use Illuminate\Database\Eloquent\Factories\Factory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Laravel\Cashier\Subscription as CashierSubscription;
 
 /**
@@ -76,6 +77,14 @@ class Subscription extends CashierSubscription
         return $this->belongsTo(SubscriptionStatus::class, 'status_id');
     }
 
+    /**
+     * @return HasMany<PaymentFailure, $this>
+     */
+    public function paymentFailures(): HasMany
+    {
+        return $this->hasMany(PaymentFailure::class);
+    }
+
     public function statusSlug(): ?string
     {
         return $this->status?->slug;
@@ -98,5 +107,29 @@ class Subscription extends CashierSubscription
         }
 
         return in_array($slug, ['active', 'trialing', 'past_due'], true);
+    }
+
+    public function isPastDue(): bool
+    {
+        if ($this->status?->slug === 'past_due') {
+            return true;
+        }
+
+        return $this->stripe_status === 'past_due';
+    }
+
+    public function isPastDueAndExpired(int $graceDays): bool
+    {
+        if (! $this->isPastDue()) {
+            return false;
+        }
+
+        $anchor = $this->ends_at ?? $this->current_period_end;
+
+        if ($anchor === null) {
+            return false;
+        }
+
+        return $anchor->copy()->addDays($graceDays)->isPast();
     }
 }

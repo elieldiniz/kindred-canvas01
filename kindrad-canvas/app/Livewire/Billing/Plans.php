@@ -41,11 +41,17 @@ class Plans extends Component
 
     public function render(): View
     {
+        $all = SubscriptionPlan::query()
+            ->active()
+            ->ordered()
+            ->with('interval')
+            ->get();
+
         return view('livewire.billing.plans', [
-            'plans' => SubscriptionPlan::active()
-                ->ordered()
-                ->with('interval')
-                ->get(),
+            'plans' => [
+                'month' => $all->filter(fn ($p) => $p->interval?->slug === 'month')->take(3)->values(),
+                'year' => $all->filter(fn ($p) => $p->interval?->slug === 'year')->take(3)->values(),
+            ],
             'user' => $this->currentUser(),
         ]);
     }

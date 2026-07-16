@@ -1,4 +1,45 @@
 <div>
+    @if ($subscription && $subscription->isPastDue())
+        @php
+            $graceDays = (int) config('billing.grace_days', 7);
+            $anchor = $subscription->ends_at ?? $subscription->current_period_end;
+            $graceExpiresAt = $anchor?->copy()->addDays($graceDays);
+            $isExpired = $subscription->isPastDueAndExpired($graceDays);
+        @endphp
+        <flux:callout
+            class="mb-6"
+            variant="{{ $isExpired ? 'danger' : 'warning' }}"
+            icon="exclamation-triangle"
+            data-test="billing-dunning-banner"
+        >
+            <flux:callout.heading>
+                {{ $isExpired
+                    ? __('Sua assinatura está com pagamento atrasado e o uso foi suspenso.')
+                    : __('Detectamos uma falha no pagamento da sua assinatura.') }}
+            </flux:callout.heading>
+            <flux:callout.text>
+                @if ($graceExpiresAt && ! $isExpired)
+                    {{ __('Carência até :date para atualizar o método de pagamento.', ['date' => $graceExpiresAt->format('d/m/Y')]) }}
+                @elseif ($isExpired)
+                    {{ __('O período de carência expirou. Novas gerações estão bloqueadas.') }}
+                @elseif ($anchor)
+                    {{ __('Próxima tentativa: :date', ['date' => $anchor->format('d/m/Y')]) }}
+                @endif
+            </flux:callout.text>
+            <div class="mt-3">
+                <button
+                    type="button"
+                    wire:click="openPortal"
+                    class="inline-flex items-center gap-2 rounded-xl bg-primary px-5 py-2.5 text-sm font-bold text-white shadow-[0_0_15px_rgba(99,54,255,0.3)] hover:shadow-[0_0_25px_rgba(99,54,255,0.5)] transition-all"
+                    data-test="billing-dunning-banner-cta"
+                >
+                    {{ __('Atualizar método de pagamento') }}
+                </button>
+            </div>
+        </flux:callout>
+    @endif
+
+
     @if ($showSuccessBanner)
         <flux:callout variant="success" icon="check-circle" class="mb-6" data-test="billing-success-banner">
             <flux:callout.heading>{{ __('Assinatura confirmada!') }}</flux:callout.heading>
