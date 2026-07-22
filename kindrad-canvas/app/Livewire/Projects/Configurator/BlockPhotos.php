@@ -69,6 +69,9 @@ class BlockPhotos extends Component
                 throw $e;
             }
         }
+
+        $this->persistPendingPhotos();
+        $this->dispatch('photos-updated');
     }
 
     public function removePhoto(int $slot): void

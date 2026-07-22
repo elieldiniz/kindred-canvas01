@@ -7,6 +7,7 @@ use App\Models\Category;
 use App\Models\Pose;
 use App\Models\Product;
 use App\Models\Project;
+use App\Models\ProjectMode;
 use App\Models\ProjectStatus;
 use App\Models\Style;
 use Illuminate\Http\RedirectResponse;
@@ -54,9 +55,12 @@ class Configurator extends Component
             abort(401);
         }
 
+        $product = Product::where('slug', 'mug')->first();
+
         $project = Project::create([
             'user_id' => $user->id,
-            'product_id' => Product::where('slug', 'mug')->value('id'),
+            'product_id' => $product?->id,
+            'mode_id' => ProjectMode::where('slug', 'mug')->value('id'),
             'status_id' => ProjectStatus::where('slug', 'draft')->value('id'),
         ]);
 
@@ -78,6 +82,9 @@ class Configurator extends Component
         }
 
         $project->product_id = $product->id;
+        // Default mode to match product slug if mode exists
+        $modeId = ProjectMode::where('slug', $product->slug)->value('id');
+        $project->mode_id = $modeId;
         $project->category_id = null;
         $project->style_id = null;
         $project->save();
@@ -148,6 +155,12 @@ class Configurator extends Component
         }
 
         $project->style_id = $style->id;
+
+        $firstLayout = $style->layouts()->whereHas('status', fn ($q) => $q->where('slug', 'active'))->first();
+        if ($firstLayout !== null) {
+            $project->layout_id = $firstLayout->id;
+        }
+
         $project->save();
 
         $this->styleId = $style->id;
@@ -184,6 +197,13 @@ class Configurator extends Component
         $project->save();
 
         $this->customPrompt = $value;
+    }
+
+    #[On('photos-updated')]
+    public function refreshPhotos(): void
+    {
+        // Simply listening to the event triggers a re-render,
+        // which re-evaluates the $this->canGenerate computed property.
     }
 
     public function updatedProductId(): void
@@ -274,6 +294,14 @@ class Configurator extends Component
         }
 
         $this->authorize('update', $project);
+
+        if ($project->layout_id === null && $project->style_id !== null) {
+            $firstLayout = $project->style->layouts()->whereHas('status', fn ($q) => $q->where('slug', 'active'))->first();
+            if ($firstLayout !== null) {
+                $project->layout_id = $firstLayout->id;
+                $project->save();
+            }
+        }
 
         app(SubmitGeneration::class)->execute($user, $project);
 

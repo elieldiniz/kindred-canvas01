@@ -84,7 +84,38 @@ test('openai provider handles api failure', function (): void {
     ]);
 })->throws(RuntimeException::class);
 
-test('gemini stub throws', function (): void {
-    app(GeminiProvider::class)
-        ->generate('prompt', ['width' => 1024, 'height' => 1024]);
-})->throws(LogicException::class);
+test('gemini provider posts and returns result', function (): void {
+    config()->set('generation.gemini.api_key', 'test-gemini-key');
+
+    $fakeImage = base64_encode('fake-image-bytes');
+
+    Http::fake([
+        'generativelanguage.googleapis.com/*' => Http::response([
+            'candidates' => [
+                [
+                    'content' => [
+                        'parts' => [
+                            [
+                                'inlineData' => [
+                                    'data' => $fakeImage,
+                                    'mimeType' => 'image/png',
+                                ],
+                            ],
+                        ],
+                    ],
+                ],
+            ],
+        ], 200),
+    ]);
+
+    $prompt = 'A beautiful mountain landscape at sunset.';
+    $result = app(GeminiProvider::class)->generate($prompt, [
+        'width' => 1024,
+        'height' => 1024,
+    ]);
+
+    expect($result->mime)->toBe('image/png')
+        ->and($result->binary)->toBe('fake-image-bytes');
+
+    Storage::disk('s3')->assertExists($result->path);
+});

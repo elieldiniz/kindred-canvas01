@@ -44,7 +44,7 @@ class PromptAssembler
 
         $name = (string) ($inputs['name'] ?? '');
         if ($name === '') {
-            throw new RuntimeException('Project inputs.name is required to assemble a prompt.');
+            $name = 'the subject';
         }
 
         $phrase = (string) ($inputs['phrase'] ?? '');
@@ -55,7 +55,14 @@ class PromptAssembler
 
         $printSpecs = $this->renderPrintSpecs($mode?->slug, $product);
         $layoutInstructions = $this->renderLayoutInstructions($layout->slug);
-        $subjectType = $project->subject_type ? __('articles.subject_type.'.$project->subject_type) : '';
+        $subjectTranslations = [
+            'pessoa' => 'person',
+            'casal' => 'couple',
+            'familia' => 'family',
+            'pet' => 'pet',
+            'outra' => 'subject',
+        ];
+        $subjectType = $project->subject_type ? ($subjectTranslations[$project->subject_type] ?? 'subject') : '';
         $pose = $project->pose?->name ?? '';
 
         $body = $template->body;
