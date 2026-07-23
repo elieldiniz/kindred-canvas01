@@ -23,6 +23,7 @@ class Layout extends Model
         'preview_path',
         'safe_area_overlay',
         'proportion_ratio',
+        'prompt_fragment',
         'status_id',
     ];
 

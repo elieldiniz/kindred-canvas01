@@ -33,6 +33,7 @@ class Project extends Model
         'subject_type',
         'custom_prompt',
         'pose_id',
+        'scene_preset_id',
         'first_generated_at',
         'is_published',
         'is_in_explore',
@@ -147,6 +148,14 @@ class Project extends Model
     public function pose(): BelongsTo
     {
         return $this->belongsTo(Pose::class);
+    }
+
+    /**
+     * @return BelongsTo<ScenePreset, $this>
+     */
+    public function scenePreset(): BelongsTo
+    {
+        return $this->belongsTo(ScenePreset::class);
     }
 
     /**

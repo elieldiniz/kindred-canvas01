@@ -17,6 +17,7 @@ class DatabaseSeeder extends Seeder
         $this->call([
             AdminSeeder::class,
             CatalogSeeder::class,
+            ScenePresetSeeder::class,
         ]);
 
         User::firstOrCreate(

@@ -119,7 +119,7 @@ test('uses active provider from config', function (): void {
     });
 });
 
-test('prompt template is required', function (): void {
+test('prompt template is no longer required by the engine', function (): void {
     Bus::fake();
 
     PromptTemplate::query()->delete();
@@ -127,18 +127,12 @@ test('prompt template is required', function (): void {
     $user = User::factory()->withCredits(5)->create();
     $project = makeCompletedProject($user);
 
-    $gens = Generation::count();
-    $txs = CreditTransaction::where('user_id', $user->id)->count();
+    $generation = app(SubmitGeneration::class)->execute($user, $project);
 
-    try {
-        app(SubmitGeneration::class)->execute($user, $project);
-        $this->fail('Expected exception was not thrown.');
-    } catch (Throwable $e) {
-        // expected
-    }
+    expect($generation)->toBeInstanceOf(Generation::class)
+        ->and(Generation::count())->toBe(1);
 
-    expect(Generation::count())->toBe($gens)
-        ->and(CreditTransaction::where('user_id', $user->id)->count())->toBe($txs);
+    Bus::assertDispatched(GenerateArtworkJob::class);
 });
 
 test('non owner gets authorization exception', function (): void {

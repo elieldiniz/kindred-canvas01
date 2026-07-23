@@ -6,6 +6,11 @@ use App\Models\Project;
 use App\Models\PromptTemplate;
 use RuntimeException;
 
+/**
+ * @deprecated Use App\Services\PromptEngine\PromptEngine instead. This class is
+ *             kept for backward compatibility with the legacy template-based
+ *             pipeline. New callers should inject PromptEngine directly.
+ */
 class PromptAssembler
 {
     /**

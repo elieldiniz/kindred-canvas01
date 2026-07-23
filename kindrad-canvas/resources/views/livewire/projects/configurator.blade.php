@@ -61,6 +61,12 @@
                 :key="'block-style-'.$categoryId.'-'.$styleId"
             />
 
+            <livewire:projects.configurator.block-scene
+                :category-id="$categoryId"
+                :scene-preset-id="$scenePresetId"
+                :key="'block-scene-'.$categoryId.'-'.$scenePresetId"
+            />
+
             @if ($this->needsPose())
                 <livewire:projects.configurator.block-pose
                     :pose-id="$poseId"
@@ -84,6 +90,7 @@
                 <x-blocks.preview-row icon="photo_library" label="Photos" :value="$projectId ? \App\Models\Project::find($projectId)?->photos()->count().' / '.$this->slotCount() : null" />
                 <x-blocks.preview-row icon="category" label="Category" :value="\App\Models\Category::find($categoryId)?->name" />
                 <x-blocks.preview-row icon="palette" label="Style" :value="\App\Models\Style::find($styleId)?->name" />
+                <x-blocks.preview-row icon="landscape" label="Scene" :value="$scenePresetId ? \App\Models\ScenePreset::find($scenePresetId)?->name : null" />
                 @if ($this->needsPose())
                     <x-blocks.preview-row icon="directions_walk" label="Pose" :value="\App\Models\Pose::find($poseId)?->name" />
                 @endif

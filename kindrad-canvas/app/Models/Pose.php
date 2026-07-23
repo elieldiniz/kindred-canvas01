@@ -33,6 +33,7 @@ class Pose extends Model
         'thumbnail_path',
         'status_id',
         'sort_order',
+        'rich_description',
     ];
 
     /**

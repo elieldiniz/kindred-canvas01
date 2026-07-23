@@ -1,0 +1,7 @@
+{
+  "error": {
+    "code": 404,
+    "message": "This model models/imagen-4.0-generate-001 is no longer available to new users. Please update your code to use a newer model for the latest features and improvements.",
+    "status": "NOT_FOUND"
+  }
+}

@@ -13,7 +13,7 @@ use App\Models\User;
 use App\Services\CreditLedger;
 use App\Services\Exceptions\CreditInsufficientException;
 use App\Services\Generation\ProviderRegistry;
-use App\Services\PromptAssembler;
+use App\Services\PromptEngine\PromptEngine;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
@@ -22,7 +22,7 @@ use InvalidArgumentException;
 class SubmitGeneration
 {
     public function __construct(
-        private readonly PromptAssembler $assembler,
+        private readonly PromptEngine $engine,
         private readonly ProviderRegistry $registry,
         private readonly CreditLedger $ledger,
     ) {}
@@ -40,7 +40,7 @@ class SubmitGeneration
 
             $this->ensureNotDunningExpired($user);
 
-            $assembled = $this->assembler->assemble($project);
+            $assembled = $this->engine->assemble($project);
             $prompt = $assembled['prompt'];
             $constraints = $assembled['constraints'];
 

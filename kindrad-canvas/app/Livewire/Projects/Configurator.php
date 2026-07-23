@@ -9,6 +9,7 @@ use App\Models\Product;
 use App\Models\Project;
 use App\Models\ProjectMode;
 use App\Models\ProjectStatus;
+use App\Models\ScenePreset;
 use App\Models\Style;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\Auth;
@@ -32,6 +33,8 @@ class Configurator extends Component
     public ?int $styleId = null;
 
     public ?int $poseId = null;
+
+    public ?int $scenePresetId = null;
 
     public ?string $subjectType = null;
 
@@ -127,10 +130,15 @@ class Configurator extends Component
 
         $project->category_id = $category->id;
         $project->style_id = null;
+        $project->scene_preset_id = ScenePreset::query()
+            ->where('category_id', $category->id)
+            ->where('is_default', true)
+            ->value('id');
         $project->save();
 
         $this->categoryId = $category->id;
         $this->styleId = null;
+        $this->scenePresetId = $project->scene_preset_id;
     }
 
     #[On('style-selected')]
@@ -184,6 +192,23 @@ class Configurator extends Component
         $project->save();
 
         $this->poseId = $pose->id;
+    }
+
+    #[On('scene-selected')]
+    public function selectScenePreset(int $scenePresetId): void
+    {
+        $project = $this->authorizeUpdateOrAbort();
+
+        $preset = ScenePreset::query()->whereKey($scenePresetId)->first();
+
+        if ($preset === null) {
+            return;
+        }
+
+        $project->scene_preset_id = $preset->id;
+        $project->save();
+
+        $this->scenePresetId = $preset->id;
     }
 
     #[On('custom-prompt-updated')]
@@ -348,6 +373,7 @@ class Configurator extends Component
         $this->categoryId = $project->category_id;
         $this->styleId = $project->style_id;
         $this->poseId = $project->pose_id;
+        $this->scenePresetId = $project->scene_preset_id;
         $this->subjectType = $project->subject_type;
         $this->customPrompt = (string) ($project->custom_prompt ?? '');
         $this->isReadOnly = $project->first_generated_at !== null;

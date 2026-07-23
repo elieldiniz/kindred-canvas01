@@ -25,6 +25,10 @@ class Category extends Model
         'thumbnail_path',
         'status_id',
         'sort_order',
+        'scene_prompt',
+        'emotion_hint',
+        'lighting_hint',
+        'color_palette',
     ];
 
     /**

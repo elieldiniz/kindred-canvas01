@@ -26,6 +26,7 @@ class Product extends Model
         'min_dpi',
         'safe_area_mm',
         'color_mode_id',
+        'product_prompt_rules',
     ];
 
     /**
@@ -38,6 +39,7 @@ class Product extends Model
             'print_height_mm' => 'decimal:2',
             'safe_area_mm' => 'decimal:2',
             'min_dpi' => 'integer',
+            'product_prompt_rules' => 'array',
         ];
     }
 

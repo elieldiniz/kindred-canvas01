@@ -150,64 +150,73 @@ class CatalogSeeder extends Seeder
     ];
 
     /**
-     * @var array<string, array{name: string, prompt_fragment: string, thumbnail_path: string|null, description: string}>
+     * @var array<string, array{name: string, prompt_fragment: string, negative_fragment: string, thumbnail_path: string|null, description: string}>
      */
     private array $styles = [
         'watercolor' => [
             'name' => 'Watercolor',
             'prompt_fragment' => 'rendered in soft watercolor with gentle washes and visible brushstrokes, warm color palette',
+            'negative_fragment' => 'no harsh lines, no digital artifacts, no overly saturated colors',
             'thumbnail_path' => null,
             'description' => 'Soft washes and brushstrokes for a hand-painted feel.',
         ],
         'cartoon' => [
             'name' => 'Cartoon',
             'prompt_fragment' => 'modern cartoon illustration, vibrant colors, soft shading, bold outlines, flat colorful style',
+            'negative_fragment' => 'no realistic textures, no photographic shading',
             'thumbnail_path' => null,
             'description' => 'Bold outlines and flat colors.',
         ],
         'realistic' => [
             'name' => 'Realistic',
             'prompt_fragment' => 'highly detailed semi-realistic digital portrait, realistic lighting and texture, photographic quality',
+            'negative_fragment' => 'no flat shading, no cartoon outlines, no painterly strokes',
             'thumbnail_path' => null,
             'description' => 'Photo-realistic detail and lighting.',
         ],
         'pixel_art' => [
             'name' => 'Pixel Art',
             'prompt_fragment' => 'rendered as 16-bit pixel art with a limited palette, retro gaming aesthetic',
+            'negative_fragment' => 'no smooth gradients, no anti-aliased edges, no high-resolution textures',
             'thumbnail_path' => null,
             'description' => 'Retro 16-bit pixel style.',
         ],
         'minimalist_line' => [
             'name' => 'Minimalist Line',
             'prompt_fragment' => 'rendered as minimalist single-line art on a clean background, elegant simplicity',
+            'negative_fragment' => 'no fills, no shading, no color blocks, no complex detail',
             'thumbnail_path' => null,
             'description' => 'Single-line minimalist drawings.',
         ],
     ];
 
     /**
-     * @var array<string, array{name: string, proportion_ratio: string, safe_area_overlay: array<string, int>|null}>
+     * @var array<string, array{name: string, proportion_ratio: string, safe_area_overlay: array<string, int>|null, prompt_fragment: string}>
      */
     private array $layouts = [
         'centered' => [
             'name' => 'Centered',
             'proportion_ratio' => '1:1',
             'safe_area_overlay' => ['top_mm' => 5, 'bottom_mm' => 5, 'left_mm' => 5, 'right_mm' => 5],
+            'prompt_fragment' => 'Main subject MUST be centered. Keep subject within central 60% of canvas width. Leave left and right areas lighter or decorative. Clean background. Do NOT place important elements near edges.',
         ],
         'border_wrap' => [
             'name' => 'Border Wrap',
             'proportion_ratio' => '1:1',
             'safe_area_overlay' => ['top_mm' => 8, 'bottom_mm' => 8, 'left_mm' => 8, 'right_mm' => 8],
+            'prompt_fragment' => 'Artwork must fill entire width. No empty areas. Seamless edges (left and right must connect). Background should flow continuously. Composition balanced across canvas.',
         ],
         'full_bleed' => [
             'name' => 'Full Bleed',
             'proportion_ratio' => '1:1',
             'safe_area_overlay' => null,
+            'prompt_fragment' => 'Create a repeating pattern. Small elements evenly distributed. Seamless horizontal tiling. Consistent spacing and style.',
         ],
         'split_top_bottom' => [
             'name' => 'Split Top-Bottom',
             'proportion_ratio' => '9:16',
             'safe_area_overlay' => ['top_mm' => 5, 'bottom_mm' => 5, 'left_mm' => 0, 'right_mm' => 0],
+            'prompt_fragment' => 'Two compositions: left and right. Leave central 20% empty (handle area). Each side should have its own subject. Balanced composition. Avoid placing important elements in the center.',
         ],
     ];
 
@@ -224,7 +233,49 @@ class CatalogSeeder extends Seeder
     ];
 
     /**
-     * @var array<string, array{name: string, print_width_mm: float, print_height_mm: float, min_dpi: int, safe_area_mm: float, color_mode: string}>
+     * @var array<string, array{scene_prompt: string, emotion_hint: string, lighting_hint: string, color_palette: string}>
+     */
+    private array $categoryEnrichment = [
+        'birthday' => [
+            'scene_prompt' => 'festive birthday celebration setting with party decorations and joyful crowd',
+            'emotion_hint' => 'joyful, celebratory, full of excitement',
+            'lighting_hint' => 'bright colorful party lights, warm glow from candles',
+            'color_palette' => 'vibrant primary colors, candy pinks and blues, gold accents',
+        ],
+        'wedding' => [
+            'scene_prompt' => 'romantic wedding ceremony setting with flowers and soft drapery',
+            'emotion_hint' => 'tender, romantic, deeply emotional',
+            'lighting_hint' => 'soft golden hour sunlight, romantic warm glow',
+            'color_palette' => 'ivory, blush pink, sage green, gold accents',
+        ],
+        'pets' => [
+            'scene_prompt' => 'playful pet environment with toys and natural elements',
+            'emotion_hint' => 'playful, loving, full of personality',
+            'lighting_hint' => 'natural daylight, soft window light',
+            'color_palette' => 'warm earth tones, soft greens, gentle blues',
+        ],
+        'family' => [
+            'scene_prompt' => 'cozy family gathering space with warm homely details',
+            'emotion_hint' => 'warm, loving, comfortable togetherness',
+            'lighting_hint' => 'soft natural light, warm indoor lighting',
+            'color_palette' => 'soft earth tones, cream, sage, terracotta',
+        ],
+        'couples' => [
+            'scene_prompt' => 'intimate setting for two with elegant romantic atmosphere',
+            'emotion_hint' => 'intimate, romantic, deeply connected',
+            'lighting_hint' => 'golden hour glow, candle-light, soft warm tones',
+            'color_palette' => 'deep burgundy, gold, soft amber, cream',
+        ],
+        'kids' => [
+            'scene_prompt' => 'whimsical playful environment with bright cheerful elements',
+            'emotion_hint' => 'playful, curious, full of wonder',
+            'lighting_hint' => 'bright daylight, soft pastel tones',
+            'color_palette' => 'pastel rainbow, bright primary colors, soft yellows and pinks',
+        ],
+    ];
+
+    /**
+     * @var array<string, array{name: string, print_width_mm: float, print_height_mm: float, min_dpi: int, safe_area_mm: float, color_mode: string, product_prompt_rules: list<string>}>
      */
     private array $products = [
         'mug' => [
@@ -234,6 +285,12 @@ class CatalogSeeder extends Seeder
             'min_dpi' => 300,
             'safe_area_mm' => 5.00,
             'color_mode' => 'rgb',
+            'product_prompt_rules' => [
+                'Horizontal wrap-around design',
+                'Seamless left-right connection',
+                'Full bleed from edge to edge',
+                'Optimized for sublimation printing',
+            ],
         ],
         'free_art' => [
             'name' => 'Free Art',
@@ -242,21 +299,26 @@ class CatalogSeeder extends Seeder
             'min_dpi' => 300,
             'safe_area_mm' => 5.00,
             'color_mode' => 'cmyk',
+            'product_prompt_rules' => [
+                'Standard portrait orientation',
+                'Full canvas coverage',
+                'CMYK color space',
+            ],
         ],
     ];
 
     /**
-     * @var array<string, array{name: string, sort_order: int}>
+     * @var array<string, array{name: string, sort_order: int, rich_description: string}>
      */
     private array $poses = [
-        'abracados' => ['name' => 'Abraçados', 'sort_order' => 0],
-        'beijo' => ['name' => 'Beijo', 'sort_order' => 1],
-        'sentados' => ['name' => 'Sentados', 'sort_order' => 2],
-        'caminhando' => ['name' => 'Caminhando', 'sort_order' => 3],
-        'natal' => ['name' => 'Natal', 'sort_order' => 4],
-        'praia' => ['name' => 'Praia', 'sort_order' => 5],
-        'sofa' => ['name' => 'Sofá', 'sort_order' => 6],
-        'flores' => ['name' => 'Flores', 'sort_order' => 7],
+        'abracados' => ['name' => 'Abraçados', 'sort_order' => 0, 'rich_description' => 'embracing couple with warm body language'],
+        'beijo' => ['name' => 'Beijo', 'sort_order' => 1, 'rich_description' => 'kissing couple in romantic embrace'],
+        'sentados' => ['name' => 'Sentados', 'sort_order' => 2, 'rich_description' => 'sitting side by side in relaxed pose'],
+        'caminhando' => ['name' => 'Caminhando', 'sort_order' => 3, 'rich_description' => 'walking together hand in hand'],
+        'natal' => ['name' => 'Natal', 'sort_order' => 4, 'rich_description' => 'festive Christmas holiday scene'],
+        'praia' => ['name' => 'Praia', 'sort_order' => 5, 'rich_description' => 'beach scene with ocean waves'],
+        'sofa' => ['name' => 'Sofá', 'sort_order' => 6, 'rich_description' => 'cozy living room sofa setting'],
+        'flores' => ['name' => 'Flores', 'sort_order' => 7, 'rich_description' => 'surrounded by colorful flowers'],
     ];
 
     public function run(): void
@@ -273,6 +335,55 @@ class CatalogSeeder extends Seeder
         $this->seedStyleLayouts($styles, $layouts);
         $this->seedPoses();
         $this->seedPromptTemplates($products);
+
+        $this->enrichCategories();
+        $this->enrichLayouts();
+        $this->enrichStyles();
+        $this->enrichProducts();
+    }
+
+    private function enrichCategories(): void
+    {
+        $categories = Category::query()->get();
+
+        foreach ($categories as $category) {
+            $enrichment = $this->categoryEnrichment[$category->slug] ?? null;
+            if ($enrichment === null) {
+                continue;
+            }
+
+            Category::query()->where('id', $category->id)->update($enrichment);
+        }
+    }
+
+    private function enrichLayouts(): void
+    {
+        foreach ($this->layouts as $slug => $row) {
+            Layout::query()->where('slug', $slug)->update([
+                'prompt_fragment' => $row['prompt_fragment'],
+            ]);
+        }
+    }
+
+    private function enrichStyles(): void
+    {
+        foreach ($this->styles as $slug => $row) {
+            Style::query()->where('slug', $slug)->update([
+                'negative_fragment' => $row['negative_fragment'],
+            ]);
+        }
+    }
+
+    private function enrichProducts(): void
+    {
+        foreach ($this->products as $slug => $row) {
+            $product = Product::query()->where('slug', $slug)->first();
+            if ($product === null) {
+                continue;
+            }
+            $product->product_prompt_rules = $row['product_prompt_rules'];
+            $product->save();
+        }
     }
 
     private function seedGenerationLookups(): void
@@ -364,6 +475,7 @@ class CatalogSeeder extends Seeder
                 'min_dpi' => $row['min_dpi'],
                 'safe_area_mm' => $row['safe_area_mm'],
                 'color_mode_id' => $colorMode->id,
+                'product_prompt_rules' => $row['product_prompt_rules'],
             ]);
         }
 
@@ -384,6 +496,11 @@ class CatalogSeeder extends Seeder
                 'thumbnail_path' => null,
                 'status_id' => $active->id,
                 'sort_order' => $row['sort_order'],
+                'rich_description' => $row['rich_description'],
+            ]);
+
+            Pose::query()->where('slug', $slug)->update([
+                'rich_description' => $row['rich_description'],
             ]);
         }
 
@@ -402,6 +519,7 @@ class CatalogSeeder extends Seeder
             $models[$slug] = Style::firstOrCreate(['slug' => $slug], [
                 'name' => $row['name'],
                 'prompt_fragment' => $row['prompt_fragment'],
+                'negative_fragment' => $row['negative_fragment'],
                 'thumbnail_path' => $row['thumbnail_path'],
                 'status_id' => $active->id,
             ]);
@@ -424,6 +542,7 @@ class CatalogSeeder extends Seeder
                 'preview_path' => null,
                 'safe_area_overlay' => $row['safe_area_overlay'],
                 'proportion_ratio' => $row['proportion_ratio'],
+                'prompt_fragment' => $row['prompt_fragment'],
                 'status_id' => $active->id,
             ]);
         }

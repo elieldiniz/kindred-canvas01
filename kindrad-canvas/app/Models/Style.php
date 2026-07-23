@@ -21,6 +21,7 @@ class Style extends Model
         'name',
         'slug',
         'prompt_fragment',
+        'negative_fragment',
         'thumbnail_path',
         'status_id',
     ];
